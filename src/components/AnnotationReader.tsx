@@ -1,10 +1,24 @@
 'use client';
 import { useState } from 'react';
 import { splitIntoSegments, resolveSelection } from '@/lib/annotate/offsets';
+import { ThemeChips } from '@/components/ThemeChips';
 
 interface Annotation { id: string; charStart: number; charEnd: number; quote: string; comment: string }
+interface Theme { id: string; name: string }
 
-export function AnnotationReader({ paperId, fullText, initial }: { paperId: string; fullText: string; initial: Annotation[] }) {
+export function AnnotationReader({
+  paperId,
+  fullText,
+  initial,
+  themes,
+  tagsByAnnotation,
+}: {
+  paperId: string;
+  fullText: string;
+  initial: Annotation[];
+  themes: Theme[];
+  tagsByAnnotation: Record<string, string[]>;
+}) {
   const [annotations, setAnnotations] = useState<Annotation[]>(initial);
   const [pending, setPending] = useState<{ charStart: number; charEnd: number; quote: string } | null>(null);
   const [comment, setComment] = useState('');
@@ -57,7 +71,10 @@ export function AnnotationReader({ paperId, fullText, initial }: { paperId: stri
       <h3>Notes ({annotations.length})</h3>
       <ul>
         {annotations.map((a) => (
-          <li key={a.id}><strong>&ldquo;{a.quote}&rdquo;</strong> — {a.comment}</li>
+          <li key={a.id}>
+            <strong>&ldquo;{a.quote}&rdquo;</strong> — {a.comment}
+            <ThemeChips annotationId={a.id} allThemes={themes} initial={tagsByAnnotation[a.id] ?? []} />
+          </li>
         ))}
       </ul>
     </div>
