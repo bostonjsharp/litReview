@@ -6,7 +6,9 @@
 
 **Architecture:** A single Next.js (App Router) app on Vercel. Postgres + pgvector holds all metadata, reviews, links, and embeddings. Vercel Blob holds PDF files. Ingestion is decoupled: upload writes a `pending` record, a process step extracts text → chunks → embeds → marks `ready`. Chat retrieves top-k chunks (hybrid vector + full-text) and asks the LLM to answer only from that context, returning answer + citations. All LLM access goes through a small provider interface so OpenAI can be swapped later.
 
-**Tech Stack:** TypeScript, Next.js 15 (App Router), Drizzle ORM, Postgres 16 + pgvector, Auth.js v5 (Google OAuth + email allowlist), Vercel Blob, `unpdf` (PDF text), `openai` SDK, `zod`, Vitest (unit + integration), Docker (`pgvector/pgvector:pg16`) for local/test DB.
+**Tech Stack:** TypeScript, Next.js 15 (App Router), Drizzle ORM, Postgres + pgvector via **Neon** (cloud; one DB for dev, a separate DB for tests — matches production), Auth.js v5 (Google OAuth + email allowlist), Vercel Blob, `unpdf` (PDF text), `openai` SDK, `zod`, Vitest (unit + integration).
+
+**Database note (no Docker):** Development and tests use a free **Neon** Postgres project (the same provider used in production on Vercel). Create the project in the Neon console, enable the `vector` extension is automatic on migrate, and put the connection strings in `.env`. Tests run against a *separate* `TEST_DATABASE_URL` and reset the `public` schema on each run, so they never touch dev data and need no `CREATE DATABASE` privilege.
 
 **Conventions used throughout:**
 - Embedding model: `text-embedding-3-small` → vector dimension **1536**.
@@ -70,9 +72,11 @@ Expected: dependencies added with no errors.
 - [ ] **Step 3: Create `.env.example` with every variable the app needs**
 
 ```bash
-# Postgres (local dev + tests use docker-compose; prod uses Neon/Vercel Postgres)
-DATABASE_URL="postgres://litreview:litreview@localhost:5432/litreview"
-TEST_DATABASE_URL="postgres://litreview:litreview@localhost:5432/litreview_test"
+# Postgres via Neon (cloud). Create a project at https://console.neon.tech,
+# then create TWO databases in it: one for dev, one for tests.
+# Copy the pooled connection strings here (they look like the examples below).
+DATABASE_URL="postgresql://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/litreview?sslmode=require"
+TEST_DATABASE_URL="postgresql://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/litreview_test?sslmode=require"
 
 # Auth.js
 AUTH_SECRET="generate-with: npx auth secret"
@@ -88,23 +92,14 @@ OPENAI_API_KEY=""
 BLOB_READ_WRITE_TOKEN=""
 ```
 
-- [ ] **Step 4: Create `docker-compose.yml` for a local pgvector Postgres**
+- [ ] **Step 4: Neon database setup (no file to create — manual one-time step)**
 
-```yaml
-services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: litreview
-      POSTGRES_PASSWORD: litreview
-      POSTGRES_DB: litreview
-    ports:
-      - "5432:5432"
-    volumes:
-      - litreview_pgdata:/var/lib/postgresql/data
-volumes:
-  litreview_pgdata:
-```
+There is no local database container. Instead:
+1. Go to https://console.neon.tech and create a free project (region near your team).
+2. In the project, create two databases: `litreview` (dev) and `litreview_test` (tests). (Neon: Branches/Databases → add database, or run `CREATE DATABASE litreview_test;` in the SQL editor.)
+3. Copy the **pooled** connection string for each into `DATABASE_URL` and `TEST_DATABASE_URL` in `.env`.
+
+`pgvector` is enabled automatically by the migration step (`CREATE EXTENSION IF NOT EXISTS vector`) — no manual action needed.
 
 - [ ] **Step 5: Create `vitest.config.ts`**
 
@@ -137,7 +132,6 @@ Add to the `"scripts"` block:
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:up": "docker compose up -d",
     "db:gen": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts"
   }
@@ -296,11 +290,10 @@ async function main() {
 main().catch((e) => { console.error(e); process.exit(1); });
 ```
 
-- [ ] **Step 5: Start the DB, generate and apply migrations**
+- [ ] **Step 5: Generate and apply migrations against the Neon dev DB**
 
-Run:
+Requires `DATABASE_URL` (Neon dev DB) set in `.env`. Run:
 ```bash
-npm run db:up
 npm run db:gen
 npm run db:migrate
 ```
@@ -315,16 +308,16 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import * as schema from '@/db/schema';
 
+// Resets the `public` schema in TEST_DATABASE_URL, then re-applies migrations.
+// Works on any Postgres including Neon (no CREATE DATABASE privilege needed).
+// SAFETY: only ever connects to TEST_DATABASE_URL, never DATABASE_URL.
 export async function makeTestDb() {
-  const url = process.env.TEST_DATABASE_URL!;
-  const root = postgres(url.replace(/\/[^/]+$/, '/postgres'), { max: 1 });
-  const dbName = url.split('/').pop()!;
-  await root`SELECT 'noop'`; // ensure connection
-  await root.unsafe(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
-  await root.unsafe(`CREATE DATABASE ${dbName}`);
-  await root.end();
-
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) throw new Error('TEST_DATABASE_URL is not set');
+  if (url === process.env.DATABASE_URL) throw new Error('TEST_DATABASE_URL must differ from DATABASE_URL');
   const sql = postgres(url, { max: 1 });
+  await sql`DROP SCHEMA IF EXISTS public CASCADE`;
+  await sql`CREATE SCHEMA public`;
   await sql`CREATE EXTENSION IF NOT EXISTS vector`;
   await migrate(drizzle(sql), { migrationsFolder: './drizzle' });
   return { db: drizzle(sql, { schema }), sql, schema };
@@ -355,7 +348,7 @@ describe('schema', () => {
 - [ ] **Step 8: Run the test to verify it passes**
 
 Run: `npm test -- tests/integration/schema.test.ts`
-Expected: PASS (DB must be running via `npm run db:up`).
+Expected: PASS (requires `TEST_DATABASE_URL` pointing at the Neon test DB).
 
 - [ ] **Step 9: Commit**
 
@@ -1617,7 +1610,7 @@ git commit -m "feat: add minimal UI for login, upload, and chat"
 
 - [ ] **Step 1: Run the entire test suite**
 
-Run: `npm run db:up && npm test`
+Run: `npm test` (requires `TEST_DATABASE_URL` set to the Neon test DB).
 Expected: all unit and integration tests PASS.
 
 - [ ] **Step 2: Create `README.md` with setup and deploy steps**
@@ -1628,17 +1621,24 @@ Expected: all unit and integration tests PASS.
 Store source papers and lit reviews, link them, and ask citation-grounded questions.
 
 ## Local setup
-1. `cp .env.example .env` and fill in `AUTH_GOOGLE_ID/SECRET`, `OPENAI_API_KEY`, `BLOB_READ_WRITE_TOKEN`, `ALLOWED_EMAILS`. Generate `AUTH_SECRET` with `npx auth secret`.
-2. `npm run db:up` — starts local Postgres + pgvector.
-3. `npm run db:migrate` — creates the schema (enables the `vector` extension).
-4. `npm run dev` — http://localhost:3000.
+1. **Create a Neon database.** Sign up at https://console.neon.tech, create a project, and create two databases in it: `litreview` (dev) and `litreview_test` (tests). Copy each pooled connection string.
+2. `cp .env.example .env` and fill in:
+   - `DATABASE_URL` / `TEST_DATABASE_URL` — the two Neon connection strings from step 1.
+   - `AUTH_SECRET` — generate with `npx auth secret`.
+   - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` — from a Google Cloud OAuth client (redirect URI `http://localhost:3000/api/auth/callback/google` for dev).
+   - `ALLOWED_EMAILS` — comma-separated team emails.
+   - `OPENAI_API_KEY` — from https://platform.openai.com.
+   - `BLOB_READ_WRITE_TOKEN` — from a Vercel Blob store (see Deploy below); only needed for PDF uploads.
+3. `npm install`
+4. `npm run db:gen && npm run db:migrate` — generates and applies the schema to the Neon dev DB (auto-enables the `vector` extension).
+5. `npm run dev` — open http://localhost:3000.
 
 ## Tests
-`npm run db:up` then `npm test` (integration tests use `TEST_DATABASE_URL`).
+`npm test` — unit tests need nothing; integration tests use `TEST_DATABASE_URL` (the Neon test DB), whose `public` schema is reset on each run. No Docker required. LLM and network calls are mocked, so no OpenAI key is needed for tests.
 
 ## Deploy (Vercel)
-- Create a Vercel Postgres (Neon) database; run `npm run db:migrate` against its `DATABASE_URL` once.
-- Add a Blob store (provides `BLOB_READ_WRITE_TOKEN`).
+- Use the same Neon project (or a production database in it); run `npm run db:migrate` against its `DATABASE_URL` once.
+- Add a Vercel Blob store (provides `BLOB_READ_WRITE_TOKEN`).
 - Set all `.env` variables in the Vercel project settings.
 - Configure the Google OAuth redirect URI: `https://<app>/api/auth/callback/google`.
 - The `/api/process` route runs ingestion in the background (up to 60s; Pro plan recommended for larger PDFs).
