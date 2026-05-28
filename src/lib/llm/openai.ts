@@ -52,4 +52,13 @@ export class OpenAIProvider implements LLMProvider {
       }));
     return { answer: parsed.answer, citations };
   }
+
+  async complete(prompt: string): Promise<string> {
+    const res = await this.client.chat.completions.create({
+      model: CHAT_MODEL,
+      response_format: { type: 'json_object' },
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return res.choices[0].message.content ?? '';
+  }
 }

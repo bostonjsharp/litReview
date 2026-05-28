@@ -33,4 +33,5 @@ export interface ChatResult {
 export interface LLMProvider {
   embed(texts: string[]): Promise<number[][]>;
   chat(messages: ChatMessage[], context: RetrievedChunk[]): Promise<ChatResult>;
+  complete(prompt: string): Promise<string>;
 }

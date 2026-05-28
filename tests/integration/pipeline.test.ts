@@ -15,6 +15,7 @@ function fakeLLM() {
   return {
     embed: vi.fn(async (texts: string[]) => texts.map(() => Array(1536).fill(0.01))),
     chat: vi.fn(async () => ({ answer: '{}', citations: [] })),
+    complete: vi.fn(async () => '{}'),
   };
 }
 
