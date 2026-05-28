@@ -8,6 +8,13 @@
       "when": 1780000624477,
       "tag": "0000_stormy_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780006717784,
+      "tag": "0001_cute_bloodstorm",
+      "breakpoints": true
     }
   ]
 }

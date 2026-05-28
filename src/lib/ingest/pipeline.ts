@@ -44,6 +44,7 @@ export async function processDocument(input: ProcessInput, deps: Deps): Promise<
         .update(schema.papers)
         .set({
           fullText: text,
+          pageOffsets,
           title: md.title ?? undefined,
           authors: md.authors ?? undefined,
           year: md.year ?? undefined,

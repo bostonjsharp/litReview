@@ -1,0 +1,1 @@
+ALTER TABLE "papers" ADD COLUMN "page_offsets" jsonb;

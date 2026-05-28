@@ -29,6 +29,7 @@ describe('processDocument', () => {
     const [updated] = await ctx.db.select().from(ctx.schema.papers).where(eq(ctx.schema.papers.id, p.id));
     expect(updated.status).toBe('ready');
     expect(updated.fullText).toContain('Neural networks');
+    expect(updated.pageOffsets).toEqual([0]);
     const rows = await ctx.db.select().from(ctx.schema.chunks).where(eq(ctx.schema.chunks.parentId, p.id));
     expect(rows.length).toBeGreaterThan(0);
     expect(llm.embed).toHaveBeenCalled();

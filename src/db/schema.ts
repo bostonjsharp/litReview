@@ -30,6 +30,7 @@ export const papers = pgTable('papers', {
   pdfUrl: text('pdf_url'),
   fullText: text('full_text'),
   metadata: jsonb('metadata'),
+  pageOffsets: jsonb('page_offsets'),
   status: text('status', { enum: statusValues }).notNull().default('pending'),
   errorReason: text('error_reason'),
   uploadedBy: uuid('uploaded_by').references(() => users.id),
