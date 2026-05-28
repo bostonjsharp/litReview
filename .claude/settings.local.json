@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c commit.gpgsign=false commit -q -m 'Add Phase 1 design spec for LitReview system *)",
+      "Bash(git -c commit.gpgsign=false commit -q -m 'Add Phase 1 implementation plan *)",
+      "PowerShell(Get-Command *)",
+      "Bash(git -c commit.gpgsign=false commit -q -m 'Switch Phase 1 plan from Docker to Neon for dev/test database *)",
+      "Bash(git -C /d/dev/bost/litReview status --short)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\('deps:',Object.keys\\(p.dependencies\\)\\);console.log\\('devDeps:',Object.keys\\(p.devDependencies\\)\\)\")",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(git -c commit.gpgsign=false commit -q -m 'chore: scaffold Next.js app with tooling and Neon-based config *)"
+    ]
+  }
+}
