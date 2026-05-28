@@ -20,7 +20,7 @@ describe('theme service', () => {
   it('creates, lists, tags, and builds a matrix; untags and deletes', async () => {
     const { c, p1, p2, a1, a2 } = await setup();
     const t = await createTheme(c.id, 'Method', null, deps());
-    expect((await listThemes(c.id, deps())).map((x) => x.name)).toEqual(['Method']);
+    expect((await listThemes(c.id, deps())).map((x: { name: string }) => x.name)).toEqual(['Method']);
 
     await tagAnnotation(a1.id, t.id, deps());
     await tagAnnotation(a1.id, t.id, deps()); // idempotent
