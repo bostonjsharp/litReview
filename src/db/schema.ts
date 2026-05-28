@@ -62,7 +62,7 @@ export const chunks = pgTable(
   'chunks',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    parentType: text('parent_type', { enum: ['paper', 'review'] }).notNull(),
+    parentType: text('parent_type', { enum: ['paper', 'review', 'annotation'] }).notNull(),
     parentId: uuid('parent_id').notNull(),
     collectionId: uuid('collection_id'),
     chunkIndex: integer('chunk_index').notNull(),
@@ -76,3 +76,25 @@ export const chunks = pgTable(
     embIdx: index('chunks_embedding_idx').using('hnsw', t.embedding.op('vector_cosine_ops')),
   }),
 );
+
+export const annotations = pgTable('annotations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  paperId: uuid('paper_id').notNull().references(() => papers.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').references(() => users.id),
+  charStart: integer('char_start').notNull(),
+  charEnd: integer('char_end').notNull(),
+  page: integer('page'),
+  quote: text('quote').notNull().default(''),
+  comment: text('comment').notNull().default(''),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const reviewEntries = pgTable('review_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  reviewId: uuid('review_id').notNull().references(() => reviews.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  kind: text('kind', { enum: ['prose', 'annotation'] }).notNull(),
+  prose: text('prose'),
+  annotationId: uuid('annotation_id').references(() => annotations.id, { onDelete: 'cascade' }),
+});

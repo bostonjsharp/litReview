@@ -1,4 +1,4 @@
-export type ParentType = 'paper' | 'review';
+export type ParentType = 'paper' | 'review' | 'annotation';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
