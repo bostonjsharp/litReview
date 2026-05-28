@@ -49,6 +49,21 @@ export async function retrieve(
 
   const out: RetrievedChunk[] = [];
   for (const r of rows) {
+    if (r.parentType === 'annotation') {
+      const [ann] = await db
+        .select({ paperId: schema.annotations.paperId })
+        .from(schema.annotations)
+        .where(eq(schema.annotations.id, r.parentId));
+      const [paper] = ann
+        ? await db.select({ title: schema.papers.title }).from(schema.papers).where(eq(schema.papers.id, ann.paperId))
+        : [undefined];
+      out.push({
+        id: r.id,
+        text: r.text,
+        source: { parentType: 'annotation', parentId: r.parentId, title: `Note on ${paper?.title ?? 'Untitled'}`, page: r.page },
+      });
+      continue;
+    }
     const table = r.parentType === 'paper' ? schema.papers : schema.reviews;
     const [parent] = await db.select({ title: table.title }).from(table).where(eq(table.id, r.parentId));
     out.push({
