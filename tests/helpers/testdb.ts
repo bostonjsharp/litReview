@@ -13,6 +13,9 @@ export async function makeTestDb() {
   if (url === process.env.DATABASE_URL) throw new Error('TEST_DATABASE_URL must differ from DATABASE_URL');
   const sql = postgres(url, { max: 1 });
   await sql`DROP SCHEMA IF EXISTS public CASCADE`;
+  // Drizzle tracks applied migrations in the `drizzle` schema; drop it too,
+  // otherwise migrate() believes migrations are already applied and creates no tables.
+  await sql`DROP SCHEMA IF EXISTS drizzle CASCADE`;
   await sql`CREATE SCHEMA public`;
   await sql`CREATE EXTENSION IF NOT EXISTS vector`;
   await migrate(drizzle(sql), { migrationsFolder: './drizzle' });

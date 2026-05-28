@@ -5,13 +5,15 @@ import { requireUser } from '@/lib/session';
 const Body = z.object({ name: z.string().min(1), researchQuestion: z.string().optional() });
 
 export async function GET() {
-  await requireUser();
+  const user = await requireUser();
+  if (!user) return new Response('Unauthorized', { status: 401 });
   const rows = await db.select().from(schema.collections);
   return Response.json(rows);
 }
 
 export async function POST(req: Request) {
   const user = await requireUser();
+  if (!user) return new Response('Unauthorized', { status: 401 });
   const body = Body.parse(await req.json());
   const [row] = await db
     .insert(schema.collections)

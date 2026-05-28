@@ -59,6 +59,9 @@ export async function processDocument(input: ProcessInput, deps: Deps): Promise<
 
     const chunks = chunkText(text);
     const embeddings = await llm.embed(chunks.map((c) => c.text));
+    if (embeddings.length !== chunks.length) {
+      throw new Error(`Embedding count mismatch: got ${embeddings.length}, expected ${chunks.length}`);
+    }
     const [parentRow] = await db.select().from(table).where(eq(table.id, input.parentId));
     const rows = chunks.map((c, i) => ({
       parentType: input.parentType,

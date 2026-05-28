@@ -35,7 +35,12 @@ export class OpenAIProvider implements LLMProvider {
       messages: [system, ...messages.slice(0, -1), userWithContext],
     });
     const raw = res.choices[0].message.content ?? '{"answer":"","citationIndexes":[]}';
-    const parsed = JSON.parse(raw) as { answer: string; citationIndexes: number[] };
+    let parsed: { answer: string; citationIndexes: number[] };
+    try {
+      parsed = JSON.parse(raw) as { answer: string; citationIndexes: number[] };
+    } catch {
+      return { answer: 'I could not find this in the corpus.', citations: [] };
+    }
     const citations = (parsed.citationIndexes ?? [])
       .map((n) => context[n - 1])
       .filter(Boolean)
