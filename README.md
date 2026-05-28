@@ -82,6 +82,11 @@ npm test
 
 ---
 
+## Reading & annotating (Phase 2)
+- Open a paper at `/papers/<id>` to read its text. Select any passage and add a note — the highlight + comment is saved as a reusable, paper-level annotation.
+- Your annotations are embedded, so chat can search and cite them ("Note on <paper>").
+- Compose a review at `/reviews/<id>/edit`: add prose blocks and annotation blocks, and reorder them. The review is an ordered list of blocks; imported reviews keep their original text.
+
 ## Deploy (Vercel)
 1. Push this repo to GitHub and import it into Vercel.
 2. Use your Neon database for production (or create a separate prod DB in the same project).
