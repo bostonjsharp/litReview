@@ -98,3 +98,20 @@ export const reviewEntries = pgTable('review_entries', {
   prose: text('prose'),
   annotationId: uuid('annotation_id').references(() => annotations.id, { onDelete: 'cascade' }),
 });
+
+export const themes = pgTable('themes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  collectionId: uuid('collection_id').notNull().references(() => collections.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const annotationThemes = pgTable(
+  'annotation_themes',
+  {
+    annotationId: uuid('annotation_id').notNull().references(() => annotations.id, { onDelete: 'cascade' }),
+    themeId: uuid('theme_id').notNull().references(() => themes.id, { onDelete: 'cascade' }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.annotationId, t.themeId] }) }),
+);
