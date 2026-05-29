@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { after } from 'next/server';
 import { db, schema } from '@/db/client';
-import { requireUser } from '@/lib/session';
+import { requireUser, requireMember } from '@/lib/session';
 import { uploadPdf } from '@/lib/blob';
 import { getLLM } from '@/lib/llm';
 import { processDocument } from '@/lib/ingest/pipeline';
@@ -14,6 +14,9 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const kind = z.enum(['paper', 'review']).parse(form.get('kind'));
+  const workspaceId = (form.get('workspaceId') as string) || '';
+  if (!workspaceId) return Response.json({ error: 'workspaceId required' }, { status: 400 });
+  if (!(await requireMember(workspaceId, user.id))) return new Response('Forbidden', { status: 403 });
   const collectionId = (form.get('collectionId') as string) || null;
   const title = (form.get('title') as string) || null;
   const file = form.get('file') as File | null;
@@ -27,14 +30,11 @@ export async function POST(req: Request) {
   }
 
   const table = kind === 'paper' ? schema.papers : schema.reviews;
-  const values: Record<string, unknown> = { collectionId, title, pdfUrl, status: 'pending' };
+  const values: Record<string, unknown> = { collectionId, workspaceId, title, pdfUrl, status: 'pending' };
   if (kind === 'paper') values.uploadedBy = user.id;
   else values.createdBy = user.id;
   const [row] = await db.insert(table).values(values).returning();
 
-  // Process AFTER the response is sent, but within this same invocation. Vercel keeps
-  // the function alive for after() up to maxDuration, so this survives where a
-  // fire-and-forget fetch would be dropped. The uploaded bytes are already in memory.
   after(
     processDocument(
       { parentType: kind, parentId: row.id, bytes, pastedText: pastedText ?? undefined },
