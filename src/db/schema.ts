@@ -14,6 +14,7 @@ export const collections = pgTable('collections', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   researchQuestion: text('research_question'),
+  workspaceId: uuid('workspace_id'),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -31,6 +32,7 @@ export const papers = pgTable('papers', {
   fullText: text('full_text'),
   metadata: jsonb('metadata'),
   pageOffsets: jsonb('page_offsets'),
+  workspaceId: uuid('workspace_id'),
   status: text('status', { enum: statusValues }).notNull().default('pending'),
   errorReason: text('error_reason'),
   uploadedBy: uuid('uploaded_by').references(() => users.id),
@@ -42,6 +44,7 @@ export const reviews = pgTable('reviews', {
   collectionId: uuid('collection_id').references(() => collections.id),
   title: text('title'),
   bodyText: text('body_text'),
+  workspaceId: uuid('workspace_id'),
   pdfUrl: text('pdf_url'),
   status: text('status', { enum: statusValues }).notNull().default('pending'),
   errorReason: text('error_reason'),
@@ -65,6 +68,7 @@ export const chunks = pgTable(
     parentType: text('parent_type', { enum: ['paper', 'review', 'annotation'] }).notNull(),
     parentId: uuid('parent_id').notNull(),
     collectionId: uuid('collection_id'),
+    workspaceId: uuid('workspace_id'),
     chunkIndex: integer('chunk_index').notNull(),
     text: text('text').notNull(),
     embedding: vector('embedding', { dimensions: 1536 }),
@@ -114,4 +118,22 @@ export const annotationThemes = pgTable(
     themeId: uuid('theme_id').notNull().references(() => themes.id, { onDelete: 'cascade' }),
   },
   (t) => ({ pk: primaryKey({ columns: [t.annotationId, t.themeId] }) }),
+);
+
+export const workspaces = pgTable('workspaces', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  ownerId: uuid('owner_id').references(() => users.id),
+  inviteCode: text('invite_code').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const workspaceMembers = pgTable(
+  'workspace_members',
+  {
+    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['owner', 'member'] }).notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.workspaceId, t.userId] }) }),
 );
