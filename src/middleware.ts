@@ -2,7 +2,12 @@ import { auth } from '@/auth';
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  if (!req.auth && !pathname.startsWith('/api/auth') && pathname !== '/login') {
+  const isPublic =
+    pathname === '/login' ||
+    pathname === '/onboarding' ||
+    pathname.startsWith('/join/') ||
+    pathname.startsWith('/api/auth');
+  if (!req.auth && !isPublic) {
     return Response.redirect(new URL('/login', req.nextUrl.origin));
   }
 });
