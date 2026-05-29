@@ -87,6 +87,11 @@ npm test
 - Your annotations are embedded, so chat can search and cite them ("Note on <paper>").
 - Compose a review at `/reviews/<id>/edit`: add prose blocks and annotation blocks, and reorder them. The review is an ordered list of blocks; imported reviews keep their original text.
 
+## Themes & literature matrix (Phase 3a)
+- Create themes within a collection and tag your annotations with them (theme chips appear under each note in the paper reader at `/papers/<id>`).
+- View the literature matrix at `/collections/<id>/matrix`: rows are papers, columns are themes, and each cell shows the paper's annotations tagged with that theme (linked back to the source).
+- Click "Suggest themes" to have the LLM propose themes and taggings from your annotations. Suggestions are non-destructive — nothing changes until you click Apply.
+
 ## Deploy (Vercel)
 1. Push this repo to GitHub and import it into Vercel.
 2. Use your Neon database for production (or create a separate prod DB in the same project).
