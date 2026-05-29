@@ -45,7 +45,6 @@ Then edit `.env`:
 | `TEST_DATABASE_URL` | Neon pooled string for `litreview_test` (must differ from `DATABASE_URL`) |
 | `AUTH_SECRET` | run `npx auth secret` and paste the value |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | a Google Cloud OAuth 2.0 Client (Web). Add redirect URI `http://localhost:3000/api/auth/callback/google` for local dev |
-| `ALLOWED_EMAILS` | comma-separated list of team emails allowed to sign in |
 | `OPENAI_API_KEY` | https://platform.openai.com → API keys |
 | `BLOB_READ_WRITE_TOKEN` | from a Vercel Blob store (see Deploy); needed only for PDF uploads |
 
@@ -91,6 +90,12 @@ npm test
 - Create themes within a collection and tag your annotations with them (theme chips appear under each note in the paper reader at `/papers/<id>`).
 - View the literature matrix at `/collections/<id>/matrix`: rows are papers, columns are themes, and each cell shows the paper's annotations tagged with that theme (linked back to the source).
 - Click "Suggest themes" to have the LLM propose themes and taggings from your annotations. Suggestions are non-destructive — nothing changes until you click Apply.
+
+## Workspaces & collaboration
+- Anyone who signs in with Google can create a **workspace** and invite teammates.
+- After signing in, create a workspace or join one with an invite code (or open a `/join/<code>` link).
+- A workspace owner can view members, copy/regenerate the invite link, and remove members at `/workspaces/<id>/members`.
+- All papers, reviews, annotations, themes, and chat are scoped to the current workspace — members collaborate on the same content; non-members have no access.
 
 ## Deploy (Vercel)
 1. Push this repo to GitHub and import it into Vercel.
