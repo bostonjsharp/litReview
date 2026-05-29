@@ -68,6 +68,7 @@ export async function processDocument(input: ProcessInput, deps: Deps): Promise<
       parentType: input.parentType,
       parentId: input.parentId,
       collectionId: parentRow.collectionId ?? null,
+      workspaceId: parentRow.workspaceId ?? null,
       chunkIndex: c.index,
       text: c.text,
       embedding: embeddings[i],

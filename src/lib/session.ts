@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db, schema } from '@/db/client';
 
@@ -13,4 +13,14 @@ export async function requireUser() {
   if (existing) return existing;
   const [created] = await db.insert(schema.users).values({ email, name: session.user?.name ?? null }).returning();
   return created;
+}
+
+// Returns the user's membership row for a workspace, or null if they are not a member.
+// Route handlers must return 403 on null.
+export async function requireMember(workspaceId: string, userId: string): Promise<{ role: string } | null> {
+  const [m] = await db
+    .select({ role: schema.workspaceMembers.role })
+    .from(schema.workspaceMembers)
+    .where(and(eq(schema.workspaceMembers.workspaceId, workspaceId), eq(schema.workspaceMembers.userId, userId)));
+  return m ?? null;
 }

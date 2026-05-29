@@ -28,6 +28,7 @@ export async function embedAnnotation(annotationId: string, deps: Deps): Promise
     parentType: 'annotation',
     parentId: annotationId,
     collectionId: paper?.collectionId ?? null,
+    workspaceId: paper?.workspaceId ?? null,
     chunkIndex: 0,
     text,
     embedding,

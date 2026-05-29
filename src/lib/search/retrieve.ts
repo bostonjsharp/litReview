@@ -2,6 +2,7 @@ import { sql, and, eq } from 'drizzle-orm';
 import type { LLMProvider, RetrievedChunk, ParentType } from '../llm/types';
 
 export interface RetrieveScope {
+  workspaceId?: string;
   collectionId?: string;
   parentType?: ParentType;
   parentId?: string;
@@ -25,6 +26,7 @@ export async function retrieve(
   const vecLiteral = `[${queryVec.join(',')}]`;
 
   const conds: unknown[] = [];
+  if (opts.scope?.workspaceId) conds.push(eq(schema.chunks.workspaceId, opts.scope.workspaceId));
   if (opts.scope?.collectionId) conds.push(eq(schema.chunks.collectionId, opts.scope.collectionId));
   if (opts.scope?.parentType) conds.push(eq(schema.chunks.parentType, opts.scope.parentType));
   if (opts.scope?.parentId) conds.push(eq(schema.chunks.parentId, opts.scope.parentId));
