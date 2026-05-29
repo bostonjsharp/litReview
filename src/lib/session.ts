@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db, schema } from '@/db/client';
 
-// Returns the current allowlisted user (creating the row on first sight), or null
+// Returns the current authenticated user (creating the row on first sight), or null
 // if there is no authenticated session. Route handlers must return 401 on null —
 // a thrown Response is NOT converted to a response by Next.js route handlers.
 export async function requireUser() {
