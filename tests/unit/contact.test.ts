@@ -20,4 +20,7 @@ describe('userAgent', () => {
     process.env.UNPAYWALL_EMAIL = 'lab@uni.edu';
     expect(userAgent()).toBe('LitReview/1.0 (mailto:lab@uni.edu)');
   });
+  it('uses the placeholder email when UNPAYWALL_EMAIL is unset', () => {
+    expect(userAgent()).toBe('LitReview/1.0 (mailto:team@example.edu)');
+  });
 });
