@@ -9,7 +9,7 @@ interface Collection {
   name: string;
 }
 
-type ItemStatus = 'pending' | 'processing' | 'ready' | 'failed';
+type ItemStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'metadata_only';
 
 interface QueueItem {
   id: string;
@@ -20,7 +20,7 @@ interface QueueItem {
   errorReason?: string | null;
 }
 
-const TERMINAL: ItemStatus[] = ['ready', 'failed'];
+const TERMINAL: ItemStatus[] = ['ready', 'failed', 'metadata_only'];
 const POLL_INTERVAL = 2500;
 
 export function UploadForm({
@@ -33,7 +33,13 @@ export function UploadForm({
   const [kind, setKind] = useState<'paper' | 'review'>('paper');
   const [collectionId, setCollectionId] = useState(collections[0]?.id ?? '');
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [pasteMode, setPasteMode] = useState(false);
+  const [mode, setMode] = useState<'file' | 'paste' | 'lookup'>('file');
+  const [identifier, setIdentifier] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<
+    { metadata: { title?: string; authors?: string[]; year?: number }; fullTextAvailable: boolean } | null
+  >(null);
   const [pasteText, setPasteText] = useState('');
   const [title, setTitle] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -118,10 +124,65 @@ export function UploadForm({
       // Reset form
       setTitle('');
       setPasteText('');
-      setPasteMode(false);
+      setMode('file');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch {
       setUploadError('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleLookup() {
+    if (!identifier.trim()) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    setPreview(null);
+    try {
+      const res = await fetch('/api/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: identifier.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setLookupError(data.error || `Lookup failed (${res.status})`);
+        return;
+      }
+      setPreview({ metadata: data.metadata, fullTextAvailable: data.fullTextAvailable });
+    } catch {
+      setLookupError('Lookup failed. Please try again.');
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  async function handleImport() {
+    if (uploading) return;
+    setUploading(true);
+    setLookupError(null);
+    try {
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          workspaceId,
+          collectionId: collectionId || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setLookupError(data.error || `Import failed (${res.status})`);
+        return;
+      }
+      const name = preview?.metadata.title || identifier.trim();
+      setQueue((prev) => [{ id: data.id, name, status: data.status, kind: 'paper', pct: 0 }, ...prev]);
+      setIdentifier('');
+      setPreview(null);
+      setMode('file');
+    } catch {
+      setLookupError('Import failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -190,12 +251,12 @@ export function UploadForm({
         className="dropzone"
         role="button"
         aria-label={`Drop a ${kind === 'paper' ? 'PDF' : 'review document'} here or click to browse files`}
-        tabIndex={pasteMode ? -1 : 0}
+        tabIndex={mode === 'file' ? 0 : -1}
         onDrop={onDrop}
         onDragOver={onDragOver}
-        onClick={() => !pasteMode && fileInputRef.current?.click()}
-        onKeyDown={(e) => { if (!pasteMode && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInputRef.current?.click(); } }}
-        style={{ cursor: pasteMode ? 'default' : 'pointer' }}
+        onClick={() => mode === 'file' && fileInputRef.current?.click()}
+        onKeyDown={(e) => { if (mode === 'file' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInputRef.current?.click(); } }}
+        style={{ cursor: mode === 'file' ? 'pointer' : 'default' }}
       >
         <div className="di">
           <Icon name="upload" size={26} />
@@ -216,23 +277,35 @@ export function UploadForm({
           style={{ display: 'none' }}
           onChange={onFileChange}
         />
-        {!pasteMode && (
+        {mode === 'file' && (
           <div className="or-paste">
             <button
               className="btn btn-ghost btn-sm"
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setPasteMode(true);
+                setMode('paste');
               }}
             >
               <Icon name="note" size={14} /> Paste text instead
             </button>
+            {kind === 'paper' && (
+              <button
+                className="btn btn-ghost btn-sm"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMode('lookup');
+                }}
+              >
+                <Icon name="book" size={14} /> Import by DOI / arXiv
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {pasteMode && (
+      {mode === 'paste' && (
         <div className="field" style={{ marginTop: 16 }}>
           <input
             className="input"
@@ -261,7 +334,7 @@ export function UploadForm({
               className="btn btn-quiet btn-sm"
               type="button"
               onClick={() => {
-                setPasteMode(false);
+                setMode('file');
                 setPasteText('');
                 setTitle('');
               }}
@@ -269,6 +342,69 @@ export function UploadForm({
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {mode === 'lookup' && (
+        <div className="field" style={{ marginTop: 16 }}>
+          <div className="row gap2">
+            <input
+              className="input"
+              placeholder="Paste a DOI or arXiv id / URL…"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLookup(); } }}
+              style={{ flex: 1 }}
+            />
+            <button
+              className="btn btn-primary"
+              type="button"
+              disabled={lookupLoading || !identifier.trim()}
+              onClick={handleLookup}
+            >
+              {lookupLoading ? 'Looking up…' : 'Look up'}
+            </button>
+            <button
+              className="btn btn-quiet btn-sm"
+              type="button"
+              onClick={() => { setMode('file'); setIdentifier(''); setPreview(null); setLookupError(null); }}
+            >
+              Cancel
+            </button>
+          </div>
+
+          {lookupError && (
+            <p className="meta" style={{ color: 'var(--danger)', marginTop: 10 }}>{lookupError}</p>
+          )}
+
+          {preview && (
+            <div className="card" style={{ marginTop: 12, padding: 14 }}>
+              <div style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                {preview.metadata.title || 'Untitled'}
+              </div>
+              <div className="meta" style={{ marginTop: 4 }}>
+                {(preview.metadata.authors || []).join(', ')}
+                {preview.metadata.year ? ` · ${preview.metadata.year}` : ''}
+              </div>
+              <div className="meta" style={{ marginTop: 8, color: preview.fullTextAvailable ? 'var(--accent)' : 'var(--muted)' }}>
+                {preview.fullTextAvailable
+                  ? '✓ Full text available — will be ingested for chat'
+                  : 'Metadata only — no open-access full text (upload the PDF later to enable chat)'}
+              </div>
+              <div className="row gap2" style={{ marginTop: 12 }}>
+                <button className="btn btn-primary" type="button" disabled={uploading} onClick={handleImport}>
+                  {uploading ? 'Importing…' : 'Import'}
+                </button>
+                <button
+                  className="btn btn-quiet btn-sm"
+                  type="button"
+                  onClick={() => setPreview(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
