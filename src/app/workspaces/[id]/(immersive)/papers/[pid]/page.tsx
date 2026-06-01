@@ -53,7 +53,7 @@ export default async function PaperPage({
       : [];
   const userById: Record<string, { name: string; color: string }> = {};
   for (const u of userRows) {
-    const displayName = u.name || u.email;
+    const displayName = u.name || u.email || 'Unknown';
     userById[u.id] = { name: displayName, color: colorForId(u.id) };
   }
 

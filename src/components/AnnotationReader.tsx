@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { splitIntoSegments, resolveSelection } from '@/lib/annotate/offsets';
 import { sliceSegment } from '@/lib/annotate/highlights';
@@ -113,7 +113,7 @@ export function AnnotationReader({
   backHref,
   backLabel,
 }: Props) {
-  const segments = splitIntoSegments(fullText);
+  const segments = useMemo(() => splitIntoSegments(fullText), [fullText]);
 
   // State
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
@@ -151,6 +151,8 @@ export function AnnotationReader({
   const docRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Selection handling ────────────────────────────────────────────────────
 
@@ -193,7 +195,8 @@ export function AnnotationReader({
     setSaveError(null);
     window.getSelection()?.removeAllRanges();
     // Scroll rail to top so compose card is visible, then focus textarea
-    setTimeout(() => {
+    if (startNoteTimerRef.current != null) clearTimeout(startNoteTimerRef.current);
+    startNoteTimerRef.current = setTimeout(() => {
       railRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       textareaRef.current?.focus();
     }, 50);
@@ -330,7 +333,8 @@ export function AnnotationReader({
 
   function activateMark(annId: string) {
     setActiveId(annId);
-    setTimeout(() => {
+    if (activateTimerRef.current != null) clearTimeout(activateTimerRef.current);
+    activateTimerRef.current = setTimeout(() => {
       document.getElementById('note-' + annId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 30);
   }
@@ -348,16 +352,25 @@ export function AnnotationReader({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // ─── Clear pending scroll timers on unmount ────────────────────────────────
+
+  useEffect(() => {
+    return () => {
+      if (activateTimerRef.current != null) clearTimeout(activateTimerRef.current);
+      if (startNoteTimerRef.current != null) clearTimeout(startNoteTimerRef.current);
+    };
+  }, []);
+
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   const themeMap = Object.fromEntries(themes.map((t) => [t.id, t]));
 
+  const hlAnns = useMemo<HlAnnotation[]>(
+    () => annotations.map((a) => ({ id: a.id, charStart: a.charStart, charEnd: a.charEnd })),
+    [annotations],
+  );
+
   function renderParagraph(segOffset: number, segText: string) {
-    const hlAnns: HlAnnotation[] = annotations.map((a) => ({
-      id: a.id,
-      charStart: a.charStart,
-      charEnd: a.charEnd,
-    }));
     const parts = sliceSegment({ offset: segOffset, text: segText }, hlAnns);
     return parts.map((part, i) => {
       if (!part.annId) return part.text;
@@ -366,9 +379,17 @@ export function AnnotationReader({
         <mark
           key={i}
           className={'hl' + (isActive ? ' active' : '')}
+          tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
             activateMark(part.annId!);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              activateMark(part.annId!);
+            }
           }}
           aria-label="Highlighted annotation"
         >
@@ -538,7 +559,15 @@ export function AnnotationReader({
                 key={a.id}
                 id={'note-' + a.id}
                 className={'note' + (isActive ? ' active' : '')}
+                role="button"
+                tabIndex={0}
                 onClick={() => setActiveId(a.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setActiveId(a.id);
+                  }
+                }}
               >
                 <div className="note-quote">&ldquo;{a.quote}&rdquo;</div>
                 {a.comment && <div className="note-comment">{a.comment}</div>}
