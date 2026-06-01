@@ -11,5 +11,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [paper] = await db.select().from(schema.papers).where(eq(schema.papers.id, id));
   if (!paper) return new Response('Not found', { status: 404 });
   const annotations = await listAnnotations(id, { db, schema, llm: getLLM() });
-  return Response.json({ paper: { id: paper.id, title: paper.title, fullText: paper.fullText }, annotations });
+  return Response.json({ paper: { id: paper.id, title: paper.title, fullText: paper.fullText, status: paper.status, errorReason: paper.errorReason }, annotations });
 }

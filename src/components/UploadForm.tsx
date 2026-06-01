@@ -17,6 +17,7 @@ interface QueueItem {
   status: ItemStatus;
   kind: 'paper' | 'review';
   pct: number;
+  errorReason?: string | null;
 }
 
 const TERMINAL: ItemStatus[] = ['ready', 'failed'];
@@ -41,11 +42,9 @@ export function UploadForm({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Poll non-terminal paper items every 2.5s via GET /api/papers/[id].
-  // NOTE: GET /api/papers/[id] returns { paper: { id, title, fullText }, annotations }
-  // — it does NOT include a `status` field. Polling is therefore best-effort:
-  // if the paper object comes back with a non-null fullText we infer "ready";
-  // otherwise we leave the status at last-known. Reviews have no GET-by-id route
-  // and are left at their last-known status with a manual queue-clear option.
+  // The response includes { paper: { id, title, fullText, status, errorReason }, annotations }.
+  // Polling stops when status reaches a terminal state ('ready' or 'failed').
+  // Reviews have no GET-by-id route and are left at their last-known status.
   const pollNonTerminal = useCallback(() => {
     setQueue((prev) => {
       const needsPoll = prev.filter(
@@ -57,13 +56,13 @@ export function UploadForm({
         fetch(`/api/papers/${item.id}`)
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
-            if (!data) return;
-            // Status is not in the response; infer from fullText presence.
-            const inferred: ItemStatus = data.paper?.fullText ? 'ready' : 'processing';
+            if (!data?.paper?.status) return;
+            const status: ItemStatus = data.paper.status as ItemStatus;
+            const errorReason: string | null = data.paper.errorReason ?? null;
             setQueue((q) =>
               q.map((qi) =>
                 qi.id === item.id
-                  ? { ...qi, status: inferred, pct: inferred === 'ready' ? 100 : qi.pct }
+                  ? { ...qi, status, pct: status === 'ready' ? 100 : qi.pct, errorReason }
                   : qi,
               ),
             );
@@ -322,7 +321,7 @@ export function UploadForm({
                       className="meta"
                       style={{ color: 'var(--danger)', marginTop: 4 }}
                     >
-                      Couldn&apos;t extract text — try a text-based PDF
+                      {item.errorReason || "Couldn’t extract text — try a text-based PDF"}
                     </div>
                   )}
                   {item.kind === 'review' && !TERMINAL.includes(item.status) && (

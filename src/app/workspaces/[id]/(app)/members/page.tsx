@@ -34,6 +34,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
         inviteCode={ws.inviteCode}
         currentUserId={user.id}
         isOwner={isOwner}
+        workspaceName={ws.name}
       />
     </div>
   );

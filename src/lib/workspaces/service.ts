@@ -53,7 +53,7 @@ export async function renameWorkspace(workspaceId: string, name: string, deps: D
 export async function listMembers(workspaceId: string, deps: Deps) {
   const { db, schema } = deps;
   return db
-    .select({ userId: schema.workspaceMembers.userId, role: schema.workspaceMembers.role, email: schema.users.email })
+    .select({ userId: schema.workspaceMembers.userId, role: schema.workspaceMembers.role, email: schema.users.email, name: schema.users.name })
     .from(schema.workspaceMembers)
     .innerJoin(schema.users, eq(schema.workspaceMembers.userId, schema.users.id))
     .where(eq(schema.workspaceMembers.workspaceId, workspaceId));

@@ -8,6 +8,7 @@ interface Member {
   userId: string;
   role: string;
   email: string;
+  name: string | null;
 }
 
 export function MembersPanel({
@@ -15,11 +16,13 @@ export function MembersPanel({
   inviteCode: initialCode,
   currentUserId,
   isOwner,
+  workspaceName,
 }: {
   workspaceId: string;
   inviteCode: string;
   currentUserId: string;
   isOwner: boolean;
+  workspaceName: string;
 }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [code, setCode] = useState(initialCode);
@@ -105,7 +108,7 @@ export function MembersPanel({
         <div className="il">
           <h3>Invite link</h3>
           <p>
-            Anyone with this link can join this workspace and access all of its collections.
+            Anyone with this link can join {workspaceName} and access all of its collections.
           </p>
         </div>
         <div className="col gap3" style={{ alignItems: 'flex-end' }}>
@@ -154,10 +157,10 @@ export function MembersPanel({
           const canRemove = isOwner && !isYou && m.role !== 'owner';
           return (
             <div className="member-row" key={m.userId}>
-              <Avatar name={m.email} color={colorForId(m.userId)} size={40} />
+              <Avatar name={m.name || m.email} color={colorForId(m.userId)} size={40} />
               <div className="member-main" style={{ flex: 1, minWidth: 0 }}>
                 <div className="mn" style={{ fontWeight: 600, fontSize: 14 }}>
-                  {m.email}{' '}
+                  {m.name || m.email}{' '}
                   {isYou && <span className="you-tag">(you)</span>}
                 </div>
                 <div
