@@ -27,33 +27,32 @@ export async function createImportedPaper(
 ): Promise<{ id: string; status: 'pending' | 'metadata_only' }> {
   const { db, schema } = deps;
   const { metadata, pdfUrl } = input;
-  const [row] = await db
-    .insert(schema.papers)
-    .values({
-      collectionId: input.collectionId,
-      workspaceId: input.workspaceId,
-      title: metadata.title ?? null,
-      doi: metadata.doi ?? null,
-      status: 'pending',
-      uploadedBy: input.userId,
-    })
-    .returning();
 
-  if (pdfUrl) return { id: row.id, status: 'pending' };
+  // With a PDF, insert a 'pending' row for processImportedPdf to ingest in the
+  // background. Without one, insert a finalized metadata_only stub in a single
+  // write (it has no body text, so it stays invisible to retrieval/chat).
+  const base = {
+    collectionId: input.collectionId,
+    workspaceId: input.workspaceId,
+    title: metadata.title ?? null,
+    doi: metadata.doi ?? null,
+    uploadedBy: input.userId,
+  };
 
-  await db
-    .update(schema.papers)
-    .set({
-      authors: metadata.authors ?? null,
-      year: metadata.year ?? null,
-      journal: metadata.journal ?? null,
-      abstract: metadata.abstract ?? null,
-      metadata,
-      status: 'metadata_only',
-    })
-    .where(eq(schema.papers.id, row.id));
+  const values = pdfUrl
+    ? { ...base, status: 'pending' as const }
+    : {
+        ...base,
+        authors: metadata.authors ?? null,
+        year: metadata.year ?? null,
+        journal: metadata.journal ?? null,
+        abstract: metadata.abstract ?? null,
+        metadata,
+        status: 'metadata_only' as const,
+      };
 
-  return { id: row.id, status: 'metadata_only' };
+  const [row] = await db.insert(schema.papers).values(values).returning();
+  return { id: row.id, status: pdfUrl ? 'pending' : 'metadata_only' };
 }
 
 interface ProcessDeps {
@@ -76,6 +75,8 @@ export async function processImportedPdf(
   const { db, schema, llm } = deps;
   const fetchFn = deps.fetchFn ?? fetch;
   const uploadPdf = deps.uploadPdf ?? defaultUploadPdf;
+  // processDocument owns its own error handling (it marks the paper 'failed' and
+  // does not re-throw), so this catch only fires for the download/upload steps above it.
   try {
     const res = await fetchFn(pdfUrl, { headers: { 'User-Agent': 'LitReview/1.0' } });
     if (!res.ok) throw new Error(`PDF download failed (${res.status})`);
