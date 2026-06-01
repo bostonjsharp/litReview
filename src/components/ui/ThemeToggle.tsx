@@ -1,19 +1,24 @@
 "use client";
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Icon } from "./Icon";
 
-function getTheme(): "light" | "dark" {
-  if (typeof document === "undefined") return "light";
+function getThemeSnapshot(): "light" | "dark" {
   return (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "light";
 }
 
+function subscribe(cb: () => void): () => void {
+  const observer = new MutationObserver(cb);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">(getTheme);
+  const theme = useSyncExternalStore(subscribe, getThemeSnapshot, () => "light");
+
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
     try { localStorage.setItem("lr-theme", next); } catch {}
-    setTheme(next);
   }
   return (
     <button className="btn-icon" title="Toggle theme" onClick={toggle}>
