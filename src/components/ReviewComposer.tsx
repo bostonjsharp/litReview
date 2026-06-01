@@ -62,7 +62,7 @@ interface BlockHandleProps {
 
 function BlockHandle({ onMoveUp, onMoveDown, onDelete, busy }: BlockHandleProps) {
   return (
-    <div className="block-handle" aria-hidden>
+    <div className="block-handle">
       <button title="Move up" onClick={onMoveUp} disabled={busy}>
         <Icon name="chevronDown" size={14} style={{ transform: 'rotate(180deg)' }} />
       </button>
@@ -98,6 +98,7 @@ function ReadView({
       </h1>
       {entries.map((e) => {
         if (e.kind === 'prose') {
+          if (!e.prose?.trim()) return null;
           return (
             <p
               key={e.id}
@@ -179,16 +180,13 @@ export function ReviewComposer({
     }
   }, [reviewId]);
 
-  // Run auto-grow on all prose textareas after entries change
+  // Run auto-grow on all prose textareas after entries change (e.g. after reload).
+  // Per-keystroke growth is handled by the ref callback + onInput handler.
   useEffect(() => {
-    for (const [id, el] of Object.entries(textareaRefs.current)) {
-      if (el) {
-        const text = localProse[id] ?? entries.find((e) => e.id === id)?.prose ?? '';
-        el.value = text;
-        autoGrow(el);
-      }
+    for (const el of Object.values(textareaRefs.current)) {
+      if (el) autoGrow(el);
     }
-  }, [entries, localProse]);
+  }, [entries]);
 
   // Derived: which annotation ids are currently used
   const usedAnnotationIds = new Set(

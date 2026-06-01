@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db/client';
 import { getReviewEntries } from '@/lib/reviews/service';
 import { ReviewComposer } from '@/components/ReviewComposer';
@@ -11,11 +11,11 @@ export default async function EditReviewPage({
 }) {
   const { id: workspaceId, rid } = await params;
 
-  // Fetch the review
+  // Fetch the review — must belong to this workspace
   const [review] = await db
     .select()
     .from(schema.reviews)
-    .where(eq(schema.reviews.id, rid));
+    .where(and(eq(schema.reviews.id, rid), eq(schema.reviews.workspaceId, workspaceId)));
   if (!review) notFound();
 
   // Fetch initial entries (sorted by position, per service.ts)
@@ -114,11 +114,11 @@ export default async function EditReviewPage({
       const paper = paperById[ann.paperId];
       // sourceLabel = first author lastname · year
       const lastName = paper?.authors?.[0]?.split(/\s+/).pop() ?? 'Unknown';
-      const year = paper?.year ?? '?';
+      const year = paper?.year;
       annLookup[ann.id] = {
         quote: ann.quote,
         page: ann.page ?? null,
-        sourceLabel: `${lastName}, ${year}`,
+        sourceLabel: year != null ? `${lastName} · ${year}` : lastName,
         themes: themesByAnnotation[ann.id] ?? [],
       };
     }
@@ -160,12 +160,12 @@ export default async function EditReviewPage({
         if (usedSet.has(ann.id)) continue;
         const paper = paperMeta[ann.paperId];
         const lastName = paper?.authors?.[0]?.split(/\s+/).pop() ?? 'Unknown';
-        const year = paper?.year ?? '?';
+        const year = paper?.year;
         candidates.push({
           id: ann.id,
           quote: ann.quote,
           page: ann.page ?? null,
-          sourceLabel: `${lastName}, ${year}`,
+          sourceLabel: year != null ? `${lastName} · ${year}` : lastName,
         });
       }
     }

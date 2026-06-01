@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db/client';
 import { AnnotationReader } from '@/components/AnnotationReader';
 import { colorForId } from '@/lib/ui/display';
@@ -11,8 +11,11 @@ export default async function PaperPage({
 }) {
   const { id: workspaceId, pid } = await params;
 
-  // Fetch the paper
-  const [paper] = await db.select().from(schema.papers).where(eq(schema.papers.id, pid));
+  // Fetch the paper — must belong to this workspace
+  const [paper] = await db
+    .select()
+    .from(schema.papers)
+    .where(and(eq(schema.papers.id, pid), eq(schema.papers.workspaceId, workspaceId)));
   if (!paper) notFound();
 
   // Fetch annotations for the paper
