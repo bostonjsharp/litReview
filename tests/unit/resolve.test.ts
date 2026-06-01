@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseIdentifier, parseArxivAtom } from '@/lib/ingest/resolve';
+import { describe, it, expect, vi } from 'vitest';
+import { parseIdentifier, parseArxivAtom, resolveSource } from '@/lib/ingest/resolve';
 
 describe('parseIdentifier', () => {
   it('parses a raw DOI', () => {
@@ -76,5 +76,41 @@ describe('parseArxivAtom', () => {
     const md = parseArxivAtom(xml);
     expect(md?.title).toBe('Cats & Dogs <v2>');
     expect(md?.abstract).toBe('A "study" of R&D.');
+  });
+});
+
+describe('resolveSource', () => {
+  it('resolves an arXiv id to metadata and a pdf url', async () => {
+    const fakeFetch = vi.fn(async () => ({ ok: true, text: async () => ARXIV_XML })) as unknown as typeof fetch;
+    const r = await resolveSource({ type: 'arxiv', id: '1706.03762' }, fakeFetch);
+    expect(r.source).toBe('arxiv');
+    expect(r.metadata.title).toBe('Attention Is All You Need');
+    expect(r.pdfUrl).toBe('https://arxiv.org/pdf/1706.03762');
+  });
+
+  it('resolves a DOI to CrossRef metadata and an Unpaywall pdf url', async () => {
+    const fakeFetch = vi.fn(async (url: string) => {
+      if (url.includes('crossref')) {
+        return { ok: true, json: async () => ({ message: { title: ['A Paper'], DOI: '10.1/x' } }) };
+      }
+      if (url.includes('unpaywall')) {
+        return { ok: true, json: async () => ({ best_oa_location: { url_for_pdf: 'https://oa.example/x.pdf' } }) };
+      }
+      throw new Error(`unexpected url ${url}`);
+    }) as unknown as typeof fetch;
+    const r = await resolveSource({ type: 'doi', id: '10.1/x' }, fakeFetch);
+    expect(r.source).toBe('doi');
+    expect(r.metadata.title).toBe('A Paper');
+    expect(r.pdfUrl).toBe('https://oa.example/x.pdf');
+  });
+
+  it('returns a null pdf url when Unpaywall has no open-access location', async () => {
+    const fakeFetch = vi.fn(async (url: string) => {
+      if (url.includes('crossref')) return { ok: true, json: async () => ({ message: { title: ['T'], DOI: '10.1/y' } }) };
+      return { ok: true, json: async () => ({ best_oa_location: null }) };
+    }) as unknown as typeof fetch;
+    const r = await resolveSource({ type: 'doi', id: '10.1/y' }, fakeFetch);
+    expect(r.pdfUrl).toBeNull();
+    expect(r.metadata.title).toBe('T');
   });
 });

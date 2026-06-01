@@ -1,4 +1,6 @@
 import type { PaperMetadata } from '../llm/types-shared';
+import { fetchCrossref } from './metadata';
+import { contactEmail, userAgent } from './contact';
 
 export type Identifier = { type: 'doi' | 'arxiv'; id: string };
 
@@ -53,4 +55,35 @@ export function parseArxivAtom(xml: string): PaperMetadata | null {
   if (summary) md.abstract = decodeEntities(summary.replace(/\s+/g, ' ').trim());
   md.journal = 'arXiv';
   return md;
+}
+
+export interface ResolvedSource {
+  metadata: PaperMetadata;
+  pdfUrl: string | null;
+  source: 'doi' | 'arxiv';
+}
+
+async function unpaywallPdfUrl(doi: string, fetchFn: typeof fetch): Promise<string | null> {
+  const url = `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${encodeURIComponent(contactEmail())}`;
+  const res = await fetchFn(url, { headers: { 'User-Agent': userAgent() } });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.best_oa_location?.url_for_pdf ?? null;
+}
+
+export async function resolveSource(
+  id: Identifier,
+  fetchFn: typeof fetch = fetch,
+): Promise<ResolvedSource> {
+  if (id.type === 'arxiv') {
+    const res = await fetchFn(`https://export.arxiv.org/api/query?id_list=${encodeURIComponent(id.id)}`, {
+      headers: { 'User-Agent': userAgent() },
+    });
+    const metadata = (res.ok ? parseArxivAtom(await res.text()) : null) ?? {};
+    return { metadata, pdfUrl: `https://arxiv.org/pdf/${id.id}`, source: 'arxiv' };
+  }
+  // DOI: CrossRef for metadata, Unpaywall for an open-access PDF (if any).
+  const metadata = (await fetchCrossref(id.id, fetchFn).catch(() => null)) ?? { doi: id.id };
+  const pdfUrl = await unpaywallPdfUrl(id.id, fetchFn).catch(() => null);
+  return { metadata, pdfUrl, source: 'doi' };
 }
