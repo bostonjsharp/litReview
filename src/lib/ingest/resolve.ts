@@ -76,11 +76,16 @@ export async function resolveSource(
   fetchFn: typeof fetch = fetch,
 ): Promise<ResolvedSource> {
   if (id.type === 'arxiv') {
+    // Network errors propagate to the caller; only parse failures are silenced.
     const res = await fetchFn(`https://export.arxiv.org/api/query?id_list=${encodeURIComponent(id.id)}`, {
       headers: { 'User-Agent': userAgent() },
     });
     const metadata = (res.ok ? parseArxivAtom(await res.text()) : null) ?? {};
-    return { metadata, pdfUrl: `https://arxiv.org/pdf/${id.id}`, source: 'arxiv' };
+    // Only hand back a PDF url when the paper was confirmed (metadata parsed).
+    // arXiv PDF urls are deterministic, but a url without confirmed metadata would
+    // mislead callers that treat pdfUrl as "paper exists".
+    const pdfUrl = metadata.title ? `https://arxiv.org/pdf/${id.id}` : null;
+    return { metadata, pdfUrl, source: 'arxiv' };
   }
   // DOI: CrossRef for metadata, Unpaywall for an open-access PDF (if any).
   const metadata = (await fetchCrossref(id.id, fetchFn).catch(() => null)) ?? { doi: id.id };

@@ -88,6 +88,13 @@ describe('resolveSource', () => {
     expect(r.pdfUrl).toBe('https://arxiv.org/pdf/1706.03762');
   });
 
+  it('returns empty metadata and null pdf url when the arXiv API fails', async () => {
+    const fakeFetch = vi.fn(async () => ({ ok: false, status: 503, text: async () => '' })) as unknown as typeof fetch;
+    const r = await resolveSource({ type: 'arxiv', id: '1706.03762' }, fakeFetch);
+    expect(r.metadata.title).toBeUndefined();
+    expect(r.pdfUrl).toBeNull();
+  });
+
   it('resolves a DOI to CrossRef metadata and an Unpaywall pdf url', async () => {
     const fakeFetch = vi.fn(async (url: string) => {
       if (url.includes('crossref')) {
