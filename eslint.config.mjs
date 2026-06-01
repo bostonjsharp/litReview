@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prototype/reference files — not compiled or imported by the app
+    "handoff/**",
   ]),
   {
     // `any` is used deliberately at the database-injection seams (pipeline,
