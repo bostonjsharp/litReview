@@ -2,11 +2,11 @@ import { eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db/client';
 import { AnnotationReader } from '@/components/AnnotationReader';
 
-export default async function PaperPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const [paper] = await db.select().from(schema.papers).where(eq(schema.papers.id, id));
+export default async function PaperPage({ params }: { params: Promise<{ id: string; pid: string }> }) {
+  const { pid } = await params;
+  const [paper] = await db.select().from(schema.papers).where(eq(schema.papers.id, pid));
   if (!paper) return <main style={{ padding: 40 }}>Paper not found.</main>;
-  const annotations = await db.select().from(schema.annotations).where(eq(schema.annotations.paperId, id));
+  const annotations = await db.select().from(schema.annotations).where(eq(schema.annotations.paperId, pid));
 
   const themes = paper.collectionId
     ? await db.select({ id: schema.themes.id, name: schema.themes.name }).from(schema.themes).where(eq(schema.themes.collectionId, paper.collectionId))

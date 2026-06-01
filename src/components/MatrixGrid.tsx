@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Matrix } from '@/lib/themes/matrix';
 
-export function MatrixGrid({ matrix }: { matrix: Matrix }) {
+export function MatrixGrid({ matrix, workspaceId }: { matrix: Matrix; workspaceId: string }) {
   if (matrix.themes.length === 0) return <p>No themes yet. Create themes or use &ldquo;Suggest themes&rdquo;.</p>;
   return (
     <table border={1} cellPadding={6} style={{ borderCollapse: 'collapse' }}>
@@ -21,7 +21,7 @@ export function MatrixGrid({ matrix }: { matrix: Matrix }) {
               <td key={t.id} style={{ verticalAlign: 'top', maxWidth: 280 }}>
                 {(matrix.cells[p.id]?.[t.id] ?? []).map((cell) => (
                   <div key={cell.id} style={{ marginBottom: 6 }}>
-                    <Link href={`/papers/${p.id}`}>&ldquo;{cell.quote}&rdquo;</Link>
+                    <Link href={`/workspaces/${workspaceId}/papers/${p.id}`}>&ldquo;{cell.quote}&rdquo;</Link>
                     <div style={{ fontSize: 12, color: '#555' }}>{cell.comment}</div>
                   </div>
                 ))}

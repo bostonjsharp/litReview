@@ -18,7 +18,7 @@ export default async function WorkspaceDashboard({ params }: { params: Promise<{
       <ul>
         {collections.map((c) => (
           <li key={c.id}>
-            <Link href={`/collections/${c.id}/matrix`}>{c.name}</Link>
+            <Link href={`/workspaces/${id}/collections/${c.id}/matrix`}>{c.name}</Link>
           </li>
         ))}
       </ul>
