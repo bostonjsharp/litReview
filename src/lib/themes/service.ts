@@ -66,10 +66,18 @@ export async function untagAnnotation(annotationId: string, themeId: string, dep
 
 export async function getMatrix(collectionId: string, deps: Deps): Promise<Matrix> {
   const { db, schema } = deps;
-  const papers = await db
-    .select({ id: schema.papers.id, title: schema.papers.title })
+  const rawPapers = await db
+    .select({ id: schema.papers.id, title: schema.papers.title, authors: schema.papers.authors, year: schema.papers.year })
     .from(schema.papers)
     .where(eq(schema.papers.collectionId, collectionId));
+  const papers = rawPapers.map((p: { id: string; title: string | null; authors: string[] | null; year: number | null }) => ({
+    id: p.id,
+    title: p.title,
+    author: p.authors && p.authors.length > 0
+      ? (p.authors[0].trim().split(/\s+/).pop() ?? null)
+      : null,
+    year: p.year ?? null,
+  }));
   const themes = await db
     .select({ id: schema.themes.id, name: schema.themes.name })
     .from(schema.themes)

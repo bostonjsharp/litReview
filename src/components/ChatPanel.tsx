@@ -12,6 +12,7 @@ interface Citation {
 }
 
 interface Turn {
+  key: number;
   q: string;
   answer: string;
   citations: Citation[];
@@ -90,6 +91,7 @@ export function ChatPanel({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const turnKeyRef = useRef(0);
 
   function buildApiScope() {
     if (scope.kind === 'collection' && scope.collectionId) {
@@ -109,7 +111,8 @@ export function ChatPanel({
     setInput('');
 
     // Optimistically append the question turn
-    setTurns((prev) => [...prev, { q, answer: '', citations: [] }]);
+    const turnKey = ++turnKeyRef.current;
+    setTurns((prev) => [...prev, { key: turnKey, q, answer: '', citations: [] }]);
     setTimeout(() => {
       scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' });
     }, 40);
@@ -124,21 +127,22 @@ export function ChatPanel({
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? `Error ${res.status}`);
         // Remove the optimistic turn
-        setTurns((prev) => prev.slice(0, -1));
+        setTurns((prev) => prev.filter((t) => t.key !== turnKey));
         return;
       }
       const data: { answer: string; citations: Citation[] } = await res.json();
-      // Replace the last (optimistic) turn with the real answer
-      setTurns((prev) => [
-        ...prev.slice(0, -1),
-        { q, answer: data.answer, citations: data.citations ?? [] },
-      ]);
+      // Replace the optimistic turn with the real answer
+      setTurns((prev) =>
+        prev.map((t) =>
+          t.key === turnKey ? { key: turnKey, q, answer: data.answer, citations: data.citations ?? [] } : t
+        )
+      );
       setTimeout(() => {
         scrollRef.current?.scrollTo({ top: 1e9, behavior: 'smooth' });
       }, 60);
     } catch {
       setError('Network error. Please try again.');
-      setTurns((prev) => prev.slice(0, -1));
+      setTurns((prev) => prev.filter((t) => t.key !== turnKey));
     } finally {
       setSending(false);
     }
@@ -198,8 +202,8 @@ export function ChatPanel({
         </div>
       ) : (
         <div className="chat-scroll" ref={scrollRef}>
-          {turns.map((turn, i) => (
-            <div key={i}>
+          {turns.map((turn) => (
+            <div key={turn.key}>
               <div className="msg-q">{turn.q}</div>
               {turn.answer ? (
                 <div className="msg-a">
@@ -270,11 +274,6 @@ export function ChatPanel({
               )}
             </div>
           ))}
-          {error && (
-            <p style={{ color: 'var(--danger, red)', fontSize: 13, textAlign: 'center' }}>
-              {error}
-            </p>
-          )}
         </div>
       )}
 
@@ -302,7 +301,7 @@ export function ChatPanel({
           Answers cite only your workspace · {paperCount} paper{paperCount !== 1 ? 's' : ''} in
           scope
         </div>
-        {error && hasConvo && (
+        {error && (
           <p style={{ color: 'var(--danger, red)', fontSize: 13, textAlign: 'center', marginTop: 6 }}>
             {error}
           </p>

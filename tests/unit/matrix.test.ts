@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { assembleMatrix } from '@/lib/themes/matrix';
 
 describe('assembleMatrix', () => {
-  const papers = [{ id: 'p1', title: 'A' }, { id: 'p2', title: 'B' }];
+  const papers = [
+    { id: 'p1', title: 'A', author: 'Smith', year: 2020 },
+    { id: 'p2', title: 'B', author: null, year: null },
+  ];
   const themes = [{ id: 't1', name: 'Method' }, { id: 't2', name: 'Result' }];
 
   it('places tagged annotations into the correct (paper, theme) cells', () => {

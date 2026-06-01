@@ -57,7 +57,7 @@ export function MatrixGrid({ matrix, workspaceId }: { matrix: Matrix; workspaceI
             <tr key={p.id}>
               <th>
                 <div className="row-paper-title">{p.title ?? 'Untitled'}</div>
-                <div className="row-paper-meta">{/* metadata not available at this layer */}</div>
+                <div className="row-paper-meta">{p.author}{p.author && p.year ? ' · ' : ''}{p.year}</div>
               </th>
               {matrix.themes.map((t) => {
                 const notes = matrix.cells[p.id]?.[t.id];
@@ -67,22 +67,12 @@ export function MatrixGrid({ matrix, workspaceId }: { matrix: Matrix; workspaceI
                       notes.map((n) => (
                         <div className="cell-note" key={n.id}>
                           <div className="cn-q">&ldquo;{n.quote}&rdquo;</div>
-                          {n.page != null && (
-                            <div className="cn-p">
-                              <Icon name="link" size={11} />
-                              <Link href={`/workspaces/${workspaceId}/papers/${p.id}`}>
-                                p.{n.page}
-                              </Link>
-                            </div>
-                          )}
-                          {n.page == null && (
-                            <div className="cn-p">
-                              <Icon name="link" size={11} />
-                              <Link href={`/workspaces/${workspaceId}/papers/${p.id}`}>
-                                view
-                              </Link>
-                            </div>
-                          )}
+                          <div className="cn-p">
+                            <Icon name="link" size={11} />
+                            <Link href={`/workspaces/${workspaceId}/papers/${p.id}`}>
+                              {n.page != null ? `p.${n.page}` : 'view'}
+                            </Link>
+                          </div>
                         </div>
                       ))
                     ) : (

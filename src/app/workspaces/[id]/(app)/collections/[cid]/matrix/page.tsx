@@ -29,7 +29,7 @@ export default async function MatrixPage({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 'none' }}>
         <PageHead eyebrow={collection.name} title="Literature matrix">
-          <SuggestThemesPanel collectionId={cid} workspaceId={id} />
+          <SuggestThemesPanel collectionId={cid} />
         </PageHead>
       </div>
       <MatrixGrid matrix={matrix} workspaceId={id} />

@@ -1,6 +1,8 @@
 export interface MatrixPaper {
   id: string;
   title: string | null;
+  author: string | null;
+  year: number | null;
 }
 export interface MatrixTheme {
   id: string;

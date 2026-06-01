@@ -20,7 +20,6 @@ export function SuggestThemesPanel({
   collectionId,
 }: {
   collectionId: string;
-  workspaceId?: string; // kept in props for future use (e.g. router.push navigation)
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -80,16 +79,25 @@ export function SuggestThemesPanel({
 
       // 2. Apply annotation assignments for this theme
       const relevantAssignments = assignments.filter((a) => a.themes.includes(name));
+      let failCount = 0;
       for (const a of relevantAssignments) {
-        await fetch(`/api/annotations/${a.annotationId}/themes`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ themeId }),
-        });
+        try {
+          const assignRes = await fetch(`/api/annotations/${a.annotationId}/themes`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ themeId }),
+          });
+          if (!assignRes.ok) failCount++;
+        } catch {
+          failCount++;
+        }
       }
 
       setAdded((prev) => new Set([...prev, name]));
       router.refresh();
+      if (failCount > 0) {
+        setError(`Added, but ${failCount} link${failCount !== 1 ? 's' : ''} failed — refresh and retry`);
+      }
     } catch {
       setError(`Failed to add theme "${name}". Please try again.`);
     } finally {
