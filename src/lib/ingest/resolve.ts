@@ -1,6 +1,9 @@
 export type Identifier = { type: 'doi' | 'arxiv'; id: string };
 
 // arXiv ids look like 2401.12345 or 2401.12345v2 (optionally with a version suffix).
+// Only the modern YYMM.NNNNN scheme is supported (pre-2007 ids like hep-th/0503001
+// are not recognized). A DOI with arXiv's 10.48550/arXiv.* prefix is intentionally
+// routed through the arXiv branch — the arXiv API gives a reliable full-text PDF.
 const ARXIV_ID_RE = /(\d{4}\.\d{4,5})(v\d+)?/;
 // DOIs always start with 10. and contain a slash.
 const DOI_RE = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i;

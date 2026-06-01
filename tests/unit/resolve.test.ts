@@ -29,4 +29,19 @@ describe('parseIdentifier', () => {
   it('returns null for unrecognized input', () => {
     expect(parseIdentifier('not an identifier')).toBeNull();
   });
+  it('parses a 5-digit-mantissa arXiv id', () => {
+    expect(parseIdentifier('2401.123456'.slice(0, 10))).toEqual({ type: 'arxiv', id: '2401.12345' });
+  });
+  it('handles a two-digit version suffix', () => {
+    expect(parseIdentifier('arXiv:2401.12345v10')).toEqual({ type: 'arxiv', id: '2401.12345' });
+  });
+  it('routes an arXiv DOI prefix through the arXiv branch', () => {
+    expect(parseIdentifier('10.48550/arXiv.2401.12345')).toEqual({ type: 'arxiv', id: '2401.12345' });
+  });
+  it('falls through to DOI when an arxiv-keyword url has no arXiv id', () => {
+    expect(parseIdentifier('https://doi.org/10.5555/arxiv-proceedings.2023.1')).toEqual({
+      type: 'doi',
+      id: '10.5555/arxiv-proceedings.2023.1',
+    });
+  });
 });
