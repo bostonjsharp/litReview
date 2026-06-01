@@ -37,7 +37,7 @@ export function Icon({ name, size = 18, stroke = 1.7, style, className }: {
 }) {
   if (name === "google") {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" style={style} className={className}>
+      <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable={false} style={style} className={className}>
         <path fill="#4285F4" d="M22.5 12.2c0-.7-.06-1.4-.18-2H12v3.8h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-7.8Z" />
         <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2v2.8A11 11 0 0 0 12 23Z" />
         <path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2a11 11 0 0 0 0 9.8l3.7-2.8Z" />
@@ -48,7 +48,7 @@ export function Icon({ name, size = 18, stroke = 1.7, style, className }: {
   const d = ICONS[name] || "";
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={style} className={className}>
+      strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable={false} style={style} className={className}>
       {d.split("M").filter(Boolean).map((seg, i) => <path key={i} d={"M" + seg} />)}
     </svg>
   );

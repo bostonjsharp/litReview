@@ -21,7 +21,7 @@ export function ThemeToggle() {
     try { localStorage.setItem("lr-theme", next); } catch {}
   }
   return (
-    <button className="btn-icon" title="Toggle theme" onClick={toggle}>
+    <button className="btn-icon" title="Toggle theme" aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"} onClick={toggle}>
       <Icon name={theme === "dark" ? "sun" : "moon"} />
     </button>
   );
