@@ -188,6 +188,17 @@ export function UploadForm({
     }
   }
 
+  function selectKind(next: 'paper' | 'review') {
+    setKind(next);
+    // Lookup is paper-only; leaving paper while in lookup mode would strand the panel.
+    if (next === 'review' && mode === 'lookup') {
+      setMode('file');
+      setIdentifier('');
+      setPreview(null);
+      setLookupError(null);
+    }
+  }
+
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) handleUpload(file);
@@ -209,14 +220,14 @@ export function UploadForm({
         <div className="seg">
           <button
             className={kind === 'paper' ? 'on' : ''}
-            onClick={() => setKind('paper')}
+            onClick={() => selectKind('paper')}
             type="button"
           >
             <Icon name="book" size={16} /> Paper
           </button>
           <button
             className={kind === 'review' ? 'on' : ''}
-            onClick={() => setKind('review')}
+            onClick={() => selectKind('review')}
             type="button"
           >
             <Icon name="file" size={16} /> Review
