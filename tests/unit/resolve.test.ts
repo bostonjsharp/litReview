@@ -71,4 +71,10 @@ describe('parseArxivAtom', () => {
   it('returns null when there is no entry', () => {
     expect(parseArxivAtom('<feed><title>ArXiv Query</title></feed>')).toBeNull();
   });
+  it('decodes common HTML entities in title and abstract', () => {
+    const xml = `<feed><entry><title>Cats &amp; Dogs &lt;v2&gt;</title><summary>A &quot;study&quot; of R&amp;D.</summary><published>2020-01-01T00:00:00Z</published></entry></feed>`;
+    const md = parseArxivAtom(xml);
+    expect(md?.title).toBe('Cats & Dogs <v2>');
+    expect(md?.abstract).toBe('A "study" of R&D.');
+  });
 });

@@ -27,6 +27,16 @@ export function parseIdentifier(input: string): Identifier | null {
   return null;
 }
 
+// arXiv Atom encodes a few HTML entities in titles/abstracts; decode the common ones.
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 // arXiv returns an Atom feed with a single <entry>. We extract the entry block
 // first so the feed-level <title> ("ArXiv Query") is never mistaken for the paper.
 export function parseArxivAtom(xml: string): PaperMetadata | null {
@@ -34,13 +44,13 @@ export function parseArxivAtom(xml: string): PaperMetadata | null {
   if (!entry) return null;
   const md: PaperMetadata = {};
   const title = entry.match(/<title>([\s\S]*?)<\/title>/)?.[1];
-  if (title) md.title = title.replace(/\s+/g, ' ').trim();
+  if (title) md.title = decodeEntities(title.replace(/\s+/g, ' ').trim());
   const authors = [...entry.matchAll(/<name>([\s\S]*?)<\/name>/g)].map((m) => m[1].trim()).filter(Boolean);
   if (authors.length) md.authors = authors;
   const year = entry.match(/<published>(\d{4})/)?.[1];
   if (year) md.year = Number(year);
   const summary = entry.match(/<summary>([\s\S]*?)<\/summary>/)?.[1];
-  if (summary) md.abstract = summary.replace(/\s+/g, ' ').trim();
+  if (summary) md.abstract = decodeEntities(summary.replace(/\s+/g, ' ').trim());
   md.journal = 'arXiv';
   return md;
 }
