@@ -1,6 +1,6 @@
 import { pgTable, uuid, text, integer, timestamp, jsonb, vector, index, primaryKey } from 'drizzle-orm/pg-core';
 
-export const statusValues = ['pending', 'processing', 'ready', 'failed'] as const;
+export const statusValues = ['pending', 'processing', 'ready', 'failed', 'metadata_only'] as const;
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
