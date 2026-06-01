@@ -1,6 +1,8 @@
 import type { LLMProvider } from '../llm/types';
 import type { PaperMetadata } from '../llm/types-shared';
 
+import { userAgent } from './contact';
+
 const DOI_RE = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i;
 const ARXIV_RE = /arXiv:\s*(\d{4}\.\d{4,5})(v\d+)?/i;
 
@@ -16,7 +18,7 @@ export function findArxivId(text: string): string | null {
 
 export async function fetchCrossref(doi: string, fetchFn: typeof fetch = fetch): Promise<PaperMetadata | null> {
   const res = await fetchFn(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, {
-    headers: { 'User-Agent': 'LitReview/1.0 (mailto:team@example.edu)' },
+    headers: { 'User-Agent': userAgent() },
   });
   if (!res.ok) return null;
   const { message } = await res.json();
