@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { Icon } from "@/components/ui/Icon";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -17,7 +17,7 @@ export default async function CollectionDetail({
   const [collection] = await db
     .select()
     .from(schema.collections)
-    .where(eq(schema.collections.id, cid));
+    .where(and(eq(schema.collections.id, cid), eq(schema.collections.workspaceId, id)));
   if (!collection) notFound();
 
   const papers = await db
