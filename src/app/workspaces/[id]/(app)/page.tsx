@@ -13,70 +13,68 @@ export default async function WorkspaceDashboard({
 }) {
   const { id } = await params;
 
-  const [w] = await db
-    .select()
-    .from(schema.workspaces)
-    .where(eq(schema.workspaces.id, id));
-  if (!w) return <main style={{ padding: 40 }}>Workspace not found.</main>;
+  const [[w], collections] = await Promise.all([
+    db.select().from(schema.workspaces).where(eq(schema.workspaces.id, id)),
+    db.select().from(schema.collections).where(eq(schema.collections.workspaceId, id)),
+  ]);
 
-  const collections = await db
-    .select()
-    .from(schema.collections)
-    .where(eq(schema.collections.workspaceId, id));
-
-  // Workspace-level stats
-  const [{ totalPapers }] = await db
-    .select({ totalPapers: sql<number>`count(*)::int` })
-    .from(schema.papers)
-    .where(eq(schema.papers.workspaceId, id));
-
-  const [{ totalAnnotations }] = await db
-    .select({ totalAnnotations: sql<number>`count(*)::int` })
-    .from(schema.annotations)
-    .innerJoin(schema.papers, eq(schema.annotations.paperId, schema.papers.id))
-    .where(eq(schema.papers.workspaceId, id));
-
-  const [{ totalThemes }] = await db
-    .select({ totalThemes: sql<number>`count(*)::int` })
-    .from(schema.themes)
-    .innerJoin(
-      schema.collections,
-      eq(schema.themes.collectionId, schema.collections.id)
-    )
-    .where(eq(schema.collections.workspaceId, id));
-
-  // Per-collection paper and review counts
+  // Workspace-level stats + per-collection counts — all independent, run concurrently
   const collectionIds = collections.map((c) => c.id);
 
-  const paperCounts: Record<string, number> = {};
-  const reviewCounts: Record<string, number> = {};
-
-  if (collectionIds.length > 0) {
-    const paperRows = await db
-      .select({
-        collectionId: schema.papers.collectionId,
-        cnt: sql<number>`count(*)::int`,
-      })
+  const [
+    [{ totalPapers }],
+    [{ totalAnnotations }],
+    [{ totalThemes }],
+    paperRows,
+    reviewRows,
+  ] = await Promise.all([
+    db
+      .select({ totalPapers: sql<number>`count(*)::int` })
       .from(schema.papers)
-      .where(inArray(schema.papers.collectionId, collectionIds))
-      .groupBy(schema.papers.collectionId);
+      .where(eq(schema.papers.workspaceId, id)),
+    db
+      .select({ totalAnnotations: sql<number>`count(*)::int` })
+      .from(schema.annotations)
+      .innerJoin(schema.papers, eq(schema.annotations.paperId, schema.papers.id))
+      .where(eq(schema.papers.workspaceId, id)),
+    db
+      .select({ totalThemes: sql<number>`count(*)::int` })
+      .from(schema.themes)
+      .innerJoin(
+        schema.collections,
+        eq(schema.themes.collectionId, schema.collections.id)
+      )
+      .where(eq(schema.collections.workspaceId, id)),
+    collectionIds.length > 0
+      ? db
+          .select({
+            collectionId: schema.papers.collectionId,
+            cnt: sql<number>`count(*)::int`,
+          })
+          .from(schema.papers)
+          .where(inArray(schema.papers.collectionId, collectionIds))
+          .groupBy(schema.papers.collectionId)
+      : Promise.resolve([]),
+    collectionIds.length > 0
+      ? db
+          .select({
+            collectionId: schema.reviews.collectionId,
+            cnt: sql<number>`count(*)::int`,
+          })
+          .from(schema.reviews)
+          .where(inArray(schema.reviews.collectionId, collectionIds))
+          .groupBy(schema.reviews.collectionId)
+      : Promise.resolve([]),
+  ]);
 
-    for (const row of paperRows) {
-      if (row.collectionId) paperCounts[row.collectionId] = row.cnt;
-    }
+  const paperCounts: Record<string, number> = {};
+  for (const row of paperRows) {
+    if (row.collectionId) paperCounts[row.collectionId] = row.cnt;
+  }
 
-    const reviewRows = await db
-      .select({
-        collectionId: schema.reviews.collectionId,
-        cnt: sql<number>`count(*)::int`,
-      })
-      .from(schema.reviews)
-      .where(inArray(schema.reviews.collectionId, collectionIds))
-      .groupBy(schema.reviews.collectionId);
-
-    for (const row of reviewRows) {
-      if (row.collectionId) reviewCounts[row.collectionId] = row.cnt;
-    }
+  const reviewCounts: Record<string, number> = {};
+  for (const row of reviewRows) {
+    if (row.collectionId) reviewCounts[row.collectionId] = row.cnt;
   }
 
   return (

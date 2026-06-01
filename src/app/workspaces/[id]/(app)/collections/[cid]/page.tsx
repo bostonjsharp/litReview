@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { eq, sql } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { Icon } from "@/components/ui/Icon";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -17,8 +18,7 @@ export default async function CollectionDetail({
     .select()
     .from(schema.collections)
     .where(eq(schema.collections.id, cid));
-  if (!collection)
-    return <main style={{ padding: 40 }}>Collection not found.</main>;
+  if (!collection) notFound();
 
   const papers = await db
     .select()
@@ -27,20 +27,15 @@ export default async function CollectionDetail({
 
   // Per-paper annotation counts for papers in this collection
   const annMap: Record<string, number> = {};
-  if (papers.length > 0) {
-    const paperIds = papers.map((p) => p.id);
+  const paperIds = papers.map((p) => p.id);
+  if (paperIds.length > 0) {
     const annRows = await db
       .select({
         paperId: schema.annotations.paperId,
         cnt: sql<number>`count(*)::int`,
       })
       .from(schema.annotations)
-      .where(
-        sql`${schema.annotations.paperId} IN (${sql.join(
-          paperIds.map((pid) => sql`${pid}::uuid`),
-          sql`, `
-        )})`
-      )
+      .where(inArray(schema.annotations.paperId, paperIds))
       .groupBy(schema.annotations.paperId);
 
     for (const row of annRows) {

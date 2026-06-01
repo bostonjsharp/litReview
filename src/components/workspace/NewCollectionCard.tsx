@@ -8,18 +8,30 @@ export function NewCollectionCard({ workspaceId }: { workspaceId: string }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function create() {
-    const res = await fetch("/api/collections", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ workspaceId, name, researchQuestion: q }),
-    });
-    if (res.ok) {
-      setOpen(false);
-      setName("");
-      setQ("");
-      router.refresh();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/collections", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId, name, researchQuestion: q }),
+      });
+      if (res.ok) {
+        setOpen(false);
+        setName("");
+        setQ("");
+        router.refresh();
+      } else {
+        setError("Failed to create collection. Please try again.");
+      }
+    } catch {
+      setError("Failed to create collection. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -46,13 +58,18 @@ export function NewCollectionCard({ workspaceId }: { workspaceId: string }) {
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
+      {error && (
+        <span className="meta" style={{ color: "var(--error, #e55)" }}>
+          {error}
+        </span>
+      )}
       <div className="row gap2">
         <button
           className="btn btn-primary btn-sm"
-          disabled={!name.trim()}
+          disabled={!name.trim() || loading}
           onClick={create}
         >
-          Create
+          {loading ? "Creating…" : "Create"}
         </button>
         <button className="btn btn-quiet btn-sm" onClick={() => setOpen(false)}>
           Cancel
