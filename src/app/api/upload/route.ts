@@ -26,7 +26,14 @@ export async function POST(req: Request) {
   let bytes: Uint8Array | undefined;
   if (file && file.size > 0) {
     bytes = new Uint8Array(await file.arrayBuffer());
-    pdfUrl = await uploadPdf(file.name, bytes);
+    try {
+      pdfUrl = await uploadPdf(file.name, bytes);
+    } catch {
+      const msg = process.env.BLOB_READ_WRITE_TOKEN
+        ? 'Failed to store the PDF. Please try again.'
+        : 'PDF storage is not configured (BLOB_READ_WRITE_TOKEN is missing). See README → Vercel Blob setup.';
+      return Response.json({ error: msg }, { status: 503 });
+    }
   }
 
   const table = kind === 'paper' ? schema.papers : schema.reviews;

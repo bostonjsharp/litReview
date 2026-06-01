@@ -29,7 +29,7 @@ export function Sidebar({ workspaceId, collections }: {
       </Link>
       <nav className="side-nav">
         {nav.map((it) => (
-          <Link key={it.href} href={it.href} className={"side-link" + (it.match(path) ? " active" : "")}>
+          <Link key={it.label} href={it.href} className={"side-link" + (it.match(path) ? " active" : "")}>
             <Icon name={it.icon} size={18} /> {it.label}
           </Link>
         ))}
