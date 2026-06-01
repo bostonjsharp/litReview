@@ -39,63 +39,53 @@ export function UploadForm({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Keep a ref to the latest queue so the polling interval never closes over stale state.
+  const queueRef = useRef<QueueItem[]>([]);
+
+  // Sync queueRef whenever queue state changes.
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   // Poll non-terminal paper items every 2.5s via GET /api/papers/[id].
   // The response includes { paper: { id, title, fullText, status, errorReason }, annotations }.
   // Polling stops when status reaches a terminal state ('ready' or 'failed').
   // Reviews have no GET-by-id route and are left at their last-known status.
+  //
+  // A single stable interval is set up on mount and reads queueRef.current on every tick,
+  // so status updates never reset the cadence.
   const pollNonTerminal = useCallback(() => {
-    setQueue((prev) => {
-      const needsPoll = prev.filter(
-        (item) => item.kind === 'paper' && !TERMINAL.includes(item.status),
-      );
-      if (needsPoll.length === 0) return prev;
+    const needsPoll = queueRef.current.filter(
+      (item) => item.kind === 'paper' && !TERMINAL.includes(item.status),
+    );
+    if (needsPoll.length === 0) return;
 
-      needsPoll.forEach((item) => {
-        fetch(`/api/papers/${item.id}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (!data?.paper?.status) return;
-            const status: ItemStatus = data.paper.status as ItemStatus;
-            const errorReason: string | null = data.paper.errorReason ?? null;
-            setQueue((q) =>
-              q.map((qi) =>
-                qi.id === item.id
-                  ? { ...qi, status, pct: status === 'ready' ? 100 : qi.pct, errorReason }
-                  : qi,
-              ),
-            );
-          })
-          .catch(() => {
-            /* silently ignore poll errors */
-          });
-      });
-      return prev; // actual updates happen in the inner setQueue above
+    needsPoll.forEach((item) => {
+      fetch(`/api/papers/${item.id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (!data?.paper?.status) return;
+          const status: ItemStatus = data.paper.status as ItemStatus;
+          const errorReason: string | null = data.paper.errorReason ?? null;
+          setQueue((q) =>
+            q.map((qi) =>
+              qi.id === item.id
+                ? { ...qi, status, pct: status === 'ready' ? 100 : qi.pct, errorReason }
+                : qi,
+            ),
+          );
+        })
+        .catch(() => {
+          /* silently ignore poll errors */
+        });
     });
   }, []);
 
+  // One stable interval — runs forever, no-ops when nothing is active.
   useEffect(() => {
-    const hasActive = queue.some(
-      (item) => item.kind === 'paper' && !TERMINAL.includes(item.status),
-    );
-    if (hasActive) {
-      if (!intervalRef.current) {
-        intervalRef.current = setInterval(pollNonTerminal, POLL_INTERVAL);
-      }
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [queue, pollNonTerminal]);
+    const id = setInterval(pollNonTerminal, POLL_INTERVAL);
+    return () => clearInterval(id);
+  }, [pollNonTerminal]);
 
   async function handleUpload(file?: File) {
     if (uploading) return;
@@ -174,10 +164,11 @@ export function UploadForm({
         {collections.length > 0 && (
           <div className="field" style={{ minWidth: 280 }}>
             <div className="row gap2">
-              <span className="label" style={{ whiteSpace: 'nowrap' }}>
+              <label htmlFor="upload-collection" className="label" style={{ whiteSpace: 'nowrap' }}>
                 Collection
-              </span>
+              </label>
               <select
+                id="upload-collection"
                 className="input"
                 value={collectionId}
                 onChange={(e) => setCollectionId(e.target.value)}
@@ -197,9 +188,13 @@ export function UploadForm({
 
       <div
         className="dropzone"
+        role="button"
+        aria-label={`Drop a ${kind === 'paper' ? 'PDF' : 'review document'} here or click to browse files`}
+        tabIndex={pasteMode ? -1 : 0}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onClick={() => !pasteMode && fileInputRef.current?.click()}
+        onKeyDown={(e) => { if (!pasteMode && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInputRef.current?.click(); } }}
         style={{ cursor: pasteMode ? 'default' : 'pointer' }}
       >
         <div className="di">
@@ -217,6 +212,7 @@ export function UploadForm({
           ref={fileInputRef}
           type="file"
           accept=".pdf,application/pdf"
+          aria-label="Upload PDF"
           style={{ display: 'none' }}
           onChange={onFileChange}
         />

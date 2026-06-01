@@ -23,7 +23,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const isOwner = membership.role === 'owner';
 
   return (
-    <div className="app-canvas fade-enter">
+    <>
       <PageHead
         eyebrow={ws.name}
         title="Members"
@@ -36,6 +36,6 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
         isOwner={isOwner}
         workspaceName={ws.name}
       />
-    </div>
+    </>
   );
 }

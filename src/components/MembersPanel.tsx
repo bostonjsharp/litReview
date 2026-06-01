@@ -31,29 +31,34 @@ export function MembersPanel({
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMembers = useCallback(() => {
-    fetch(`/api/workspaces/${workspaceId}/members`)
+  const loadMembers = useCallback((signal?: AbortSignal) => {
+    fetch(`/api/workspaces/${workspaceId}/members`, signal ? { signal } : undefined)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: Member[]) => setMembers(d))
-      .catch(() => setError('Could not load members.'));
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setError('Could not load members.');
+      });
   }, [workspaceId]);
 
   useEffect(() => {
-    loadMembers();
+    const controller = new AbortController();
+    loadMembers(controller.signal);
+    return () => controller.abort();
   }, [loadMembers]);
 
-  function copy() {
+  async function copy() {
     const link =
       typeof window !== 'undefined'
         ? `${window.location.origin}/join/${code}`
         : `/join/${code}`;
     try {
-      navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
-      /* fallback: silently skip on non-secure contexts */
+      /* clipboard unavailable in non-secure contexts — leave state unchanged */
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
   }
 
   async function regenerate() {
@@ -181,7 +186,7 @@ export function MembersPanel({
                 <button
                   className="btn btn-sm btn-danger"
                   onClick={() => remove(m.userId)}
-                  disabled={removing === m.userId}
+                  disabled={!!removing}
                 >
                   <Icon name="x" size={14} />{' '}
                   {removing === m.userId ? 'Removing…' : 'Remove'}

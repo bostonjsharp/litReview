@@ -26,15 +26,13 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
     .where(eq(schema.collections.workspaceId, id));
 
   return (
-    <div className="app-canvas fade-enter">
-      <div className="upload-wrap">
-        <PageHead
-          eyebrow={`${ws.name} · import`}
-          title="Add to your corpus"
-          sub="Drop a PDF or paste text. We extract the title, authors and full text in the background."
-        />
-        <UploadForm workspaceId={id} collections={collections} />
-      </div>
+    <div className="upload-wrap">
+      <PageHead
+        eyebrow={`${ws.name} · import`}
+        title="Add to your corpus"
+        sub="Drop a PDF or paste text. We extract the title, authors and full text in the background."
+      />
+      <UploadForm workspaceId={id} collections={collections} />
     </div>
   );
 }
