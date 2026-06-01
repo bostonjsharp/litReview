@@ -3,12 +3,14 @@ import { extractPdf } from './extract';
 import { chunkText, pageForOffset } from './chunk';
 import { extractMetadata } from './metadata';
 import type { LLMProvider, ParentType } from '../llm/types';
+import type { PaperMetadata } from '../llm/types-shared';
 
 interface ProcessInput {
   parentType: ParentType;
   parentId: string;
   bytes?: Uint8Array;
   pastedText?: string;
+  metadata?: PaperMetadata;
 }
 
 interface Deps {
@@ -39,7 +41,9 @@ export async function processDocument(input: ProcessInput, deps: Deps): Promise<
     }
 
     if (input.parentType === 'paper') {
-      const md = await extractMetadata(text, llm).catch(() => ({}) as Awaited<ReturnType<typeof extractMetadata>>);
+      const md = input.metadata
+        ? input.metadata
+        : await extractMetadata(text, llm).catch(() => ({}) as Awaited<ReturnType<typeof extractMetadata>>);
       await db
         .update(schema.papers)
         .set({

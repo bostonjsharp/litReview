@@ -46,4 +46,24 @@ describe('processDocument', () => {
     expect(updated.status).toBe('failed');
     expect(updated.errorReason).toBeTruthy();
   });
+
+  it('uses pre-fetched metadata and skips the LLM extraction call', async () => {
+    const [p] = await ctx.db.insert(ctx.schema.papers).values({ status: 'pending' }).returning();
+    const llm = fakeLLM();
+    await processDocument(
+      {
+        parentType: 'paper',
+        parentId: p.id,
+        pastedText: 'Body text with no DOI present. '.repeat(200),
+        metadata: { title: 'Injected Title', authors: ['Given Author'], year: 2019, journal: 'arXiv' },
+      },
+      { db: ctx.db, schema: ctx.schema, llm },
+    );
+    const [updated] = await ctx.db.select().from(ctx.schema.papers).where(eq(ctx.schema.papers.id, p.id));
+    expect(updated.status).toBe('ready');
+    expect(updated.title).toBe('Injected Title');
+    expect(updated.authors).toEqual(['Given Author']);
+    // extractMetadata's LLM fallback must NOT run when metadata is supplied.
+    expect(llm.chat).not.toHaveBeenCalled();
+  });
 });
