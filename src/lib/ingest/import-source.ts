@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { uploadPdf as defaultUploadPdf } from '../blob';
 import { processDocument } from './pipeline';
+import { userAgent } from './contact';
 import type { PaperMetadata } from '../llm/types-shared';
 import type { LLMProvider } from '../llm/types';
 
@@ -78,7 +79,7 @@ export async function processImportedPdf(
   // processDocument owns its own error handling (it marks the paper 'failed' and
   // does not re-throw), so this catch only fires for the download/upload steps above it.
   try {
-    const res = await fetchFn(pdfUrl, { headers: { 'User-Agent': 'LitReview/1.0' } });
+    const res = await fetchFn(pdfUrl, { headers: { 'User-Agent': userAgent() } });
     if (!res.ok) throw new Error(`PDF download failed (${res.status})`);
     const bytes = new Uint8Array(await res.arrayBuffer());
     const blobUrl = await uploadPdf(`${paperId}.pdf`, bytes);
