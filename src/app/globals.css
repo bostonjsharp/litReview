@@ -2,6 +2,13 @@
 @import "./styles/layout.css";
 @import "./styles/screens.css";
 
+/* Override font tokens to next/font CSS variables */
+:root {
+  --serif: var(--font-spectral), Georgia, "Times New Roman", serif;
+  --sans: var(--font-hanken), system-ui, -apple-system, sans-serif;
+  --mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+}
+
 /* App fills the viewport; immersive + shell wrappers size to 100% */
 html, body { height: 100%; }
 body { min-height: 100%; }
