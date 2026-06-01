@@ -35,11 +35,28 @@ interface Props {
   paperId: string;
   fullText: string;
   paper: PaperMeta;
+  pageCount: number | null;
   annotations: Annotation[];
   themes: Theme[];
   tagsByAnnotation: Record<string, string[]>;
   backHref: string;
   backLabel: string;
+}
+
+// ─── Offset helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Computes the number of rendered characters from the start of `container`
+ * to `node` at `offset`. This correctly handles paragraphs that contain
+ * multiple child nodes (e.g. plain text interleaved with <mark> elements),
+ * because Range.toString() concatenates all text content within the range —
+ * matching how splitIntoSegments / sliceSegment count characters.
+ */
+function localOffsetWithin(container: HTMLElement, node: Node, offset: number): number {
+  const r = document.createRange();
+  r.setStart(container, 0);
+  r.setEnd(node, offset);
+  return r.toString().length;
 }
 
 // ─── ThemePop ────────────────────────────────────────────────────────────────
@@ -89,6 +106,7 @@ export function AnnotationReader({
   paperId,
   fullText,
   paper,
+  pageCount,
   annotations: initialAnnotations,
   themes,
   tagsByAnnotation: initialTagsByAnnotation,
@@ -144,9 +162,11 @@ export function AnnotationReader({
     const focusEl = s.focusNode?.parentElement?.closest('[data-base]') as HTMLElement | null;
     if (!anchorEl || !focusEl) return;
 
+    const aLocal = localOffsetWithin(anchorEl, s.anchorNode!, s.anchorOffset);
+    const fLocal = localOffsetWithin(focusEl, s.focusNode!, s.focusOffset);
     const { charStart, charEnd } = resolveSelection(
-      { base: Number(anchorEl.dataset.base), local: s.anchorOffset },
-      { base: Number(focusEl.dataset.base), local: s.focusOffset },
+      { base: Number(anchorEl.dataset.base), local: aLocal },
+      { base: Number(focusEl.dataset.base), local: fLocal },
     );
     if (charEnd - charStart < 4) return;
 
@@ -380,9 +400,17 @@ export function AnnotationReader({
         <div className="reader-doc" ref={docRef} style={{ position: 'relative' }}>
           {/* Eyebrow */}
           <div className="reader-eyebrow">
-            {paper.journal && <span>{paper.journal}</span>}
-            {paper.journal && paper.year && <span>·</span>}
-            {paper.year && <span>{paper.year}</span>}
+            {[
+              paper.journal,
+              paper.year != null ? String(paper.year) : null,
+              pageCount != null ? `${pageCount} pages` : null,
+            ]
+              .filter(Boolean)
+              .flatMap((item, i) =>
+                i === 0
+                  ? [<span key={i}>{item}</span>]
+                  : [<span key={`sep-${i}`}>·</span>, <span key={i}>{item}</span>],
+              )}
           </div>
 
           <h1 className="reader-title">{paper.title}</h1>

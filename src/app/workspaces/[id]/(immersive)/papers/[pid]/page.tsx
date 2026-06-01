@@ -69,6 +69,9 @@ export default async function PaperPage({
     authorColor: a.createdBy ? (userById[a.createdBy]?.color ?? 'var(--accent)') : 'var(--accent)',
   }));
 
+  // Compute page count from stored page offsets
+  const pageCount = Array.isArray(paper.pageOffsets) ? paper.pageOffsets.length : null;
+
   // Back-link: go to collection page if paper has a collectionId, else the workspace
   const backHref = paper.collectionId
     ? `/workspaces/${workspaceId}/collections/${paper.collectionId}`
@@ -88,6 +91,7 @@ export default async function PaperPage({
         journal: paper.journal ?? null,
         doi: paper.doi ?? null,
       }}
+      pageCount={pageCount}
       annotations={annotations}
       themes={themes}
       tagsByAnnotation={tagsByAnnotation}
