@@ -91,6 +91,36 @@ describe('processImportedPdf', () => {
     expect(llm.chat).not.toHaveBeenCalled();
   });
 
+  it('falls back to a metadata_only stub when the link is not a real PDF', async () => {
+    const metadata = { title: 'Paywalled Paper', authors: ['P. Author'], year: 2022, journal: 'Nature' };
+    // Mirror the real flow: createImportedPaper inserts a pending row (with title)
+    // first, then processImportedPdf runs in the background.
+    const { id } = await createImportedPaper(
+      { workspaceId: null, collectionId: null, userId: null, metadata, pdfUrl: 'https://publisher.example/landing-page' },
+      { db: ctx.db, schema: ctx.schema },
+    );
+    const html = new TextEncoder().encode('<!DOCTYPE html><html><head><link rel="stylesheet"></head></html>');
+    const fetchFn = vi.fn(async () => ({ ok: true, arrayBuffer: async () => html.buffer })) as unknown as typeof fetch;
+    const uploadPdf = vi.fn();
+    const llm = fakeLLM();
+
+    await processImportedPdf(id, 'https://publisher.example/landing-page', metadata, {
+      db: ctx.db,
+      schema: ctx.schema,
+      llm,
+      fetchFn,
+      uploadPdf,
+    });
+
+    const [row] = await ctx.db.select().from(ctx.schema.papers).where(eq(ctx.schema.papers.id, id));
+    expect(row.status).toBe('metadata_only');
+    expect(row.title).toBe('Paywalled Paper');
+    expect(row.authors).toEqual(['P. Author']);
+    expect(row.pdfUrl).toBeNull();
+    expect(uploadPdf).not.toHaveBeenCalled();
+    expect(llm.embed).not.toHaveBeenCalled();
+  });
+
   it('marks the paper failed when the pdf download fails', async () => {
     const [p] = await ctx.db.insert(ctx.schema.papers).values({ status: 'pending' }).returning();
     const fetchFn = vi.fn(async () => ({ ok: false, status: 404 })) as unknown as typeof fetch;
