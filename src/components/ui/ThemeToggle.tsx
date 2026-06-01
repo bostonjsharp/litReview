@@ -1,13 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Icon } from "./Icon";
 
+function getTheme(): "light" | "dark" {
+  if (typeof document === "undefined") return "light";
+  return (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "light";
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  useEffect(() => {
-    const t = (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "light";
-    setTheme(t);
-  }, []);
+  const [theme, setTheme] = useState<"light" | "dark">(getTheme);
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
