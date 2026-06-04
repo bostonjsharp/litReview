@@ -30,4 +30,16 @@ describe('retrieve', () => {
     expect(res[0].text).toBe('about transformers');
     expect(res[0].source).toMatchObject({ parentType: 'paper', parentId: p.id, title: 'Attention Paper', page: 1 });
   });
+
+  it('defaults to k=12 when no k is given', async () => {
+    const [p] = await ctx.db.insert(ctx.schema.papers).values({ title: 'Bulk', status: 'ready' }).returning();
+    const vec = Array(1536).fill(0); vec[0] = 1;
+    const rows = Array.from({ length: 13 }, (_, i) => ({
+      parentType: 'paper' as const, parentId: p.id, chunkIndex: i, text: `chunk ${i}`,
+      embedding: vec, page: 1, charStart: i, charEnd: i + 1,
+    }));
+    await ctx.db.insert(ctx.schema.chunks).values(rows);
+    const res = await retrieve('anything', fakeLLM(vec), ctx.db, { schema: ctx.schema }); // no k
+    expect(res).toHaveLength(12);
+  });
 });

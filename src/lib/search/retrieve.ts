@@ -21,7 +21,7 @@ export async function retrieve(
   opts: RetrieveOpts,
 ): Promise<RetrievedChunk[]> {
   const { schema } = opts;
-  const k = opts.k ?? 8;
+  const k = opts.k ?? 12;
   const [queryVec] = await llm.embed([query]);
   const vecLiteral = `[${queryVec.join(',')}]`;
 
@@ -45,7 +45,7 @@ export async function retrieve(
     .from(schema.chunks)
     .where(where)
     .orderBy(
-      sql`(${schema.chunks.embedding} <=> ${vecLiteral}::vector) - 0.1 * ts_rank(to_tsvector('english', ${schema.chunks.text}), plainto_tsquery('english', ${query}))`,
+      sql`(${schema.chunks.embedding} <=> ${vecLiteral}::vector) - 0.05 * ts_rank(to_tsvector('english', ${schema.chunks.text}), plainto_tsquery('english', ${query}))`,
     )
     .limit(k);
 
