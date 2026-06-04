@@ -36,6 +36,13 @@
       "when": 1780095516544,
       "tag": "0004_spooky_celestials",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780600616029,
+      "tag": "0005_faulty_havok",
+      "breakpoints": true
     }
   ]
 }

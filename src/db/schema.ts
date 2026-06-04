@@ -137,3 +137,23 @@ export const workspaceMembers = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.workspaceId, t.userId] }) }),
 );
+
+export const chats = pgTable('chats', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  scopeKind: text('scope_kind', { enum: ['workspace', 'collection', 'paper'] }).notNull().default('workspace'),
+  scopeId: uuid('scope_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  chatId: uuid('chat_id').notNull().references(() => chats.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+  content: text('content').notNull(),
+  citations: jsonb('citations'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
