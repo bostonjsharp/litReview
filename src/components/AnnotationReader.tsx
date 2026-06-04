@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { splitIntoSegments, resolveSelection } from '@/lib/annotate/offsets';
+import { splitIntoSegments, resolveSelection, segmentOffsetForChar } from '@/lib/annotate/offsets';
 import { sliceSegment, firstOccurrenceFlags } from '@/lib/annotate/highlights';
 import type { HlAnnotation } from '@/lib/annotate/highlights';
 import { matchesThemeFocus, isDimmed } from '@/lib/annotate/themeFilter';
@@ -222,6 +222,7 @@ export function AnnotationReader({
   const activateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deepLinkedRef = useRef(false);
+  const atFlashedRef = useRef(false);
 
   // ─── Selection handling ────────────────────────────────────────────────────
 
@@ -469,6 +470,27 @@ export function AnnotationReader({
       clearTimeout(removeFlash);
     };
   }, [annotations]);
+
+  // Deep-link: ?at=<charStart> scrolls to the paragraph that contains the passage and
+  // flashes it. `?ann=` (a specific highlight) takes precedence when both are present.
+  useEffect(() => {
+    if (atFlashedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ann')) return;
+    const at = params.get('at');
+    if (at == null) return;
+    const n = Number(at);
+    if (!Number.isFinite(n)) return;
+    const segOffset = segmentOffsetForChar(segments, n);
+    if (segOffset == null) return;
+    const el = document.querySelector(`[data-base="${segOffset}"]`);
+    if (!el) return;
+    atFlashedRef.current = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('para-flash');
+    const t = setTimeout(() => el.classList.remove('para-flash'), 1200);
+    return () => clearTimeout(t);
+  }, [segments]);
 
   // ─── Render helpers ────────────────────────────────────────────────────────
 

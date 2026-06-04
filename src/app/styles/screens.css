@@ -265,3 +265,10 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
   .chat-rail.collapsed-mobile { display: none; }
   .chat-history-toggle { display: inline-flex; }
 }
+
+/* ?at= deep-link: briefly highlight the paragraph a passage lives in */
+@keyframes para-flash {
+  0%, 100% { background: transparent; }
+  25% { background: var(--accent-soft); }
+}
+.para-flash { animation: para-flash 1.2s ease-out; border-radius: 4px; }
