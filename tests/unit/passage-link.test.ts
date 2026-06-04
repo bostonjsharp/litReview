@@ -6,6 +6,10 @@ describe('passageHref', () => {
     expect(passageHref('w', { parentType: 'paper', parentId: 'p1', paperId: 'p1', charStart: 42 }))
       .toBe('/workspaces/w/papers/p1?at=42');
   });
+  it('links a paper without ?at= when charStart is missing (legacy citation)', () => {
+    expect(passageHref('w', { parentType: 'paper', parentId: 'p1', paperId: 'p1', charStart: null }))
+      .toBe('/workspaces/w/papers/p1');
+  });
   it('links a note to its paper with ?ann=', () => {
     expect(passageHref('w', { parentType: 'annotation', parentId: 'a1', paperId: 'p2', charStart: 0 }))
       .toBe('/workspaces/w/papers/p2?ann=a1');
