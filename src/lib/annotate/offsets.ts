@@ -26,3 +26,17 @@ export function resolveSelection(a: SelectionPoint, b: SelectionPoint): { charSt
   const q = b.base + b.local;
   return { charStart: Math.min(p, q), charEnd: Math.max(p, q) };
 }
+
+// Returns the `offset` of the rendered segment (paragraph) that contains `charOffset` —
+// i.e. the last segment whose start is at or before it. Clamps before the first segment
+// and after the last; returns null when there are no segments. Used to scroll a `?at=`
+// deep-link to the right paragraph.
+export function segmentOffsetForChar(segments: TextSegment[], charOffset: number): number | null {
+  if (segments.length === 0) return null;
+  let result = segments[0].offset;
+  for (const seg of segments) {
+    if (seg.offset <= charOffset) result = seg.offset;
+    else break;
+  }
+  return result;
+}
