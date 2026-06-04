@@ -104,10 +104,10 @@ cross-paper synthesis surface.
   3a layout work.
 
 ### BUG-9 — Chat/annotations should deep-link to the exact spot in the paper
-- **Status:** reader side DONE (Phase 2); chat side open (Phase 3)
+- **Status:** DONE (reader side Phase 2; chat side + `?at=` Phase 3c)
 - **Report:** Citations and pulled annotations should navigate to where the passage/note actually is in the paper.
 - **Resolution (Phase 2):** each annotation's first `<mark>` carries `id="hl-<annId>"`; `…/papers/<pid>?ann=<id>` scrolls to and flashes that highlight and activates its note; clicking a note card scrolls the document to its passage; matrix cell notes link with `?ann=<id>`. Helper `firstOccurrenceFlags` in `lib/annotate/highlights.ts`; flash CSS `.hl-flash`.
-- **Still open (Phase 3):** chat citations deep-linking, and `?at=<charStart>` anchoring for chat passages that aren't annotations (reuses this same anchor/scroll mechanism).
+- **Resolution (Phase 3c):** passage location (`charStart`, `paperId`) now flows through `RetrievedChunk`→`Citation`; `?at=<charStart>` scrolls to and flashes the containing paragraph (`segmentOffsetForChar` in `offsets.ts`, `.para-flash` CSS); chat citations and search results build jump links via `passageHref` (`src/lib/ui/passage-link.ts`) — paper→`?at=`, note→`?ann=`, review→edit page.
 
 ### BUG-10 — No author "stamp" on annotations
 - **Status:** new / partially exists
@@ -127,9 +127,12 @@ cross-paper synthesis surface.
 ## Features to add
 
 ### FEAT-1 — Standalone RAG search bar (not just chat)
-- **Status:** new
+- **Status:** DONE (Phase 3c)
 - **Idea:** A search bar that runs corpus retrieval and shows ranked passages directly, bypassing the chat round-trip.
-- **Notes:** Reuse `lib/search/retrieve.ts`; add a `/api/search` (or reuse) + results UI with deep links (see BUG-9).
+- **Resolution:** The top-bar search input (previously inert) navigates on Enter to a
+  server-component results page `/workspaces/[id]/search?q=…` that runs `retrieve()`
+  directly (no API route) and lists ranked passages, each a `passageHref` jump link into
+  the paper at the passage (scroll + flash). Search is literal (no 3b query rewrite).
 
 ### FEAT-2 — Multiple highlighter colors
 - **Status:** SUPERSEDED / wontfix (replaced by the theme focus filter, Phase 2)
