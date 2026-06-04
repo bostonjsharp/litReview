@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { splitIntoSegments, resolveSelection } from '@/lib/annotate/offsets';
 import { sliceSegment } from '@/lib/annotate/highlights';
 import type { HlAnnotation } from '@/lib/annotate/highlights';
+import { matchesThemeFocus, isDimmed } from '@/lib/annotate/themeFilter';
 import { Icon } from '@/components/ui/Icon';
 import { Avatar } from '@/components/ui/Avatar';
 import { normalizeThemeName } from '@/lib/themes/name';
@@ -199,6 +200,10 @@ export function AnnotationReader({
 
   // Theme pop: which note (or "draft") has its theme picker open
   const [themePopFor, setThemePopFor] = useState<string | null>(null);
+
+  // Theme focus filter
+  const [focusThemeId, setFocusThemeId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Refs
   const docRef = useRef<HTMLDivElement>(null);
@@ -445,10 +450,11 @@ export function AnnotationReader({
     return parts.map((part, i) => {
       if (!part.annId) return part.text;
       const isActive = activeId === part.annId;
+      const dim = isDimmed(part.annId!, focusThemeId, tagsByAnnotation);
       return (
         <mark
           key={i}
-          className={'hl' + (isActive ? ' active' : '')}
+          className={'hl' + (isActive ? ' active' : '') + (dim ? ' hl-dim' : '')}
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
@@ -541,16 +547,66 @@ export function AnnotationReader({
 
       {/* ── Right: notes rail ── */}
       <aside className="notes-rail themed">
-        <div className="notes-head">
+        <div className="notes-head" style={{ position: 'relative' }}>
           <h3>
             Notes <span className="meta">{annotations.length}</span>
           </h3>
-          <button className="btn-icon" title="Filter by theme" aria-label="Filter by theme">
+          <button
+            className="btn-icon"
+            title="Filter by theme"
+            aria-label="Filter by theme"
+            onClick={() => setFilterOpen((o) => !o)}
+          >
             <Icon name="filter" size={16} />
           </button>
+          {filterOpen && (
+            <>
+              <div className="menu-scrim" onClick={() => setFilterOpen(false)} />
+              <div className="theme-pop fade-enter" style={{ top: 36, right: 0 }}>
+                <button
+                  onClick={() => {
+                    setFocusThemeId(null);
+                    setFilterOpen(false);
+                  }}
+                >
+                  <span className="tp-dot" /> All themes
+                  {focusThemeId === null && (
+                    <Icon name="check" size={14} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />
+                  )}
+                </button>
+                {themes.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setFocusThemeId(t.id);
+                      setFilterOpen(false);
+                    }}
+                  >
+                    <span className="tp-dot" /> {t.name}
+                    {focusThemeId === t.id && (
+                      <Icon name="check" size={14} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="notes-scroll" ref={railRef}>
+          {focusThemeId && (
+            <div className="reader-filter-banner">
+              <Icon name="filter" size={13} />
+              <span>Focused: {themes.find((t) => t.id === focusThemeId)?.name ?? 'theme'}</span>
+              <button
+                className="btn btn-quiet btn-sm"
+                style={{ marginLeft: 'auto' }}
+                onClick={() => setFocusThemeId(null)}
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {/* ── Compose card (at top of rail when drafting) ── */}
           {draft && (
             <div className="note-compose fade-enter">
@@ -620,7 +676,9 @@ export function AnnotationReader({
           )}
 
           {/* ── Saved note cards ── */}
-          {annotations.map((a) => {
+          {annotations
+            .filter((a) => matchesThemeFocus(a.id, focusThemeId, tagsByAnnotation))
+            .map((a) => {
             const noteThemeIds = tagsByAnnotation[a.id] ?? [];
             const isActive = activeId === a.id;
             return (

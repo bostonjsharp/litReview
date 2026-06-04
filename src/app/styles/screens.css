@@ -180,3 +180,20 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
 .chat-suggest { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 440px; }
 .chat-suggest button { text-align: left; padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--r); font-size: 14px; color: var(--ink-2); background: var(--surface); transition: all .14s; }
 .chat-suggest button:hover { border-color: var(--accent-soft-border); color: var(--ink); background: var(--surface-2); }
+
+/* Theme focus filter — dim highlights that don't match the focused theme */
+.hl.hl-dim {
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+}
+.reader-filter-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--accent-faint, rgba(0, 0, 0, 0.04));
+  border-radius: 6px;
+}
