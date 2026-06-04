@@ -3,12 +3,15 @@ import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { ChatHistoryRail, type ChatSummary } from '@/components/ChatHistoryRail';
+import { passageHref } from '@/lib/ui/passage-link';
 
 interface Citation {
   parentType: 'paper' | 'review' | 'annotation';
   parentId: string;
   title: string;
   page: number | null;
+  charStart: number;
+  paperId: string | null;
 }
 interface Message {
   id: string;
@@ -48,8 +51,7 @@ function AnswerText({
         const n = parseInt(part, 10);
         const cite = citations[n - 1];
         if (!cite) return <sup key={i}>[{part}]</sup>;
-        const href =
-          cite.parentType === 'paper' ? `/workspaces/${workspaceId}/papers/${cite.parentId}` : undefined;
+        const href = passageHref(workspaceId, cite);
         return href ? (
           <Link key={i} href={href}>
             <sup>{n}</sup>
@@ -296,10 +298,7 @@ export function ChatPanel({
                           <div className="cites">
                             <div className="cites-head">{m.citations.length} sources</div>
                             {m.citations.map((c, j) => {
-                              const href =
-                                c.parentType === 'paper'
-                                  ? `/workspaces/${workspaceId}/papers/${c.parentId}`
-                                  : undefined;
+                              const href = passageHref(workspaceId, c);
                               const inner = (
                                 <>
                                   <span className="cite-num">{j + 1}</span>
