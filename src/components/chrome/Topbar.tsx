@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
@@ -13,6 +14,14 @@ export function Topbar({ workspace, workspaces, userName }: {
   userName: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const router = useRouter();
+
+  function runSearch() {
+    const query = q.trim();
+    if (query) router.push(`/workspaces/${workspace.id}/search?q=${encodeURIComponent(query)}`);
+  }
+
   return (
     <header className="topbar themed">
       <div className="ws-switch-wrap">
@@ -28,8 +37,14 @@ export function Topbar({ workspace, workspaces, userName }: {
       </div>
       <div className="topbar-search">
         <Icon name="search" size={17} style={{ color: "var(--faint)" }} />
-        <input placeholder="Search papers, notes, themes…" aria-label="Search (coming soon)" />
-        <span className="kbd">⌘K</span>
+        <input
+          placeholder="Search papers, notes, themes…"
+          aria-label="Search papers, notes and themes"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
+        />
+        <span className="kbd">⏎</span>
       </div>
       <div className="row gap2">
         <ThemeToggle />
