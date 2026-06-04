@@ -412,9 +412,6 @@ export function AnnotationReader({
           </Link>
           <div className="grow" />
           <span className="meta">{annotations.length} notes</span>
-          <button className="btn-icon" title="Reading settings (coming soon)" aria-label="Reading settings">
-            <Icon name="settings" size={17} />
-          </button>
         </div>
 
         {/* Document */}
