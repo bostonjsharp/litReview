@@ -66,14 +66,14 @@ cross-paper synthesis surface.
 - **Notes:** Reader is `AnnotationReader.tsx`; highlights computed via `sliceSegment()`. Likely a stale-state / missing re-render after delete (local state not pruned, or marker keyed off old data).
 
 ### BUG-4 — Settings gear inside the paper view does nothing
-- **Status:** new
+- **Status:** DONE (Phase 2 — removed)
 - **Report:** The gear icon in the immersive paper reader has no handler.
-- **Notes:** Reader at `/workspaces/[id]/(immersive)/papers/[pid]`. Decide what the gear should do (reader prefs: font size, highlight colors, who-annotated filter) — ties into FEAT-2 and FEAT-?.
+- **Resolution:** Decided in brainstorming there is no essential reading setting worth shipping; the dead button was removed from the reader topbar rather than filled in.
 
 ### BUG-5 — Lit matrix: AI can suggest themes, but users can't create themes inline
-- **Status:** new
+- **Status:** DONE (Phase 2)
 - **Report:** "Suggest themes" (AI) exists, but no UI to create a theme manually. Users should be able to create a theme at highlight time and select one.
-- **Notes:** API already exists — POST `/api/collections/[id]/themes` (create), POST `/api/annotations/[id]/themes` (tag). Missing UI: a "new theme" affordance in the annotation/highlight flow and in the matrix. AI suggest = `lib/themes/suggest.ts`.
+- **Resolution:** `ThemePop` in `AnnotationReader.tsx` now has a "+ New theme" input that creates the theme (`POST /api/collections/[id]/themes`) and auto-selects it; `collectionId` is plumbed into the reader and `themes` is local state so created themes appear everywhere without reload. Helper `normalizeThemeName` (`src/lib/themes/name.ts`). Still open later: the same affordance in the matrix view.
 
 ### BUG-6 — RAG is too rigid (exact-keyword feel)
 - **Status:** new
@@ -91,9 +91,10 @@ cross-paper synthesis surface.
 - **Notes:** `ChatPanel.tsx` styling — quick CSS fix. Likely folded into BUG-7 redesign.
 
 ### BUG-9 — Chat/annotations should deep-link to the exact spot in the paper
-- **Status:** new
+- **Status:** reader side DONE (Phase 2); chat side open (Phase 3)
 - **Report:** Citations and pulled annotations should navigate to where the passage/note actually is in the paper.
-- **Notes:** Data exists for this — chunks/annotations store `page`, `charStart`, `charEnd`. Need: anchored URLs (e.g. `?ann=<id>` / `#char-<offset>`) and scroll-to-and-flash behavior in `AnnotationReader.tsx`. Citations currently link to the paper page but not the precise offset.
+- **Resolution (Phase 2):** each annotation's first `<mark>` carries `id="hl-<annId>"`; `…/papers/<pid>?ann=<id>` scrolls to and flashes that highlight and activates its note; clicking a note card scrolls the document to its passage; matrix cell notes link with `?ann=<id>`. Helper `firstOccurrenceFlags` in `lib/annotate/highlights.ts`; flash CSS `.hl-flash`.
+- **Still open (Phase 3):** chat citations deep-linking, and `?at=<charStart>` anchoring for chat passages that aren't annotations (reuses this same anchor/scroll mechanism).
 
 ### BUG-10 — No author "stamp" on annotations
 - **Status:** new / partially exists
@@ -118,9 +119,13 @@ cross-paper synthesis surface.
 - **Notes:** Reuse `lib/search/retrieve.ts`; add a `/api/search` (or reuse) + results UI with deep links (see BUG-9).
 
 ### FEAT-2 — Multiple highlighter colors
-- **Status:** new
+- **Status:** SUPERSEDED / wontfix (replaced by the theme focus filter, Phase 2)
 - **Idea:** Let users pick highlight colors.
-- **Notes:** Needs a `color` column on `annotations` + color picker in the highlight flow + render in `AnnotationReader.tsx`. Could double as a category signal.
+- **Decision:** Dropped. Highlights can carry multiple themes and real collections have
+  many themes, so "color = theme" breaks on multi-theme highlights and exhausts the
+  ~6–8 distinguishable colors. Replaced by a **theme focus filter** in the reader: pick a
+  theme → its highlights stay lit, others dim, the notes rail filters to it. Helpers
+  `matchesThemeFocus`/`isDimmed` (`src/lib/annotate/themeFilter.ts`); `.hl-dim` CSS.
 
 ### FEAT-3 — A "Papers" tab (all uploaded papers in the workspace)
 - **Status:** new
