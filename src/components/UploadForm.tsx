@@ -53,26 +53,25 @@ export function UploadForm({
     queueRef.current = queue;
   }, [queue]);
 
-  // Poll non-terminal paper items every 2.5s via GET /api/papers/[id].
-  // The response includes { paper: { id, title, fullText, status, errorReason }, annotations }.
-  // Polling stops when status reaches a terminal state ('ready' or 'failed').
-  // Reviews have no GET-by-id route and are left at their last-known status.
+  // Poll non-terminal items every 2.5s. Papers hit GET /api/papers/[id] ({ paper: {...} }),
+  // reviews hit GET /api/reviews/[id] ({ review: {...} }) — both carry { status, errorReason }.
+  // Polling stops when status reaches a terminal state ('ready' | 'failed' | 'metadata_only').
   //
   // A single stable interval is set up on mount and reads queueRef.current on every tick,
   // so status updates never reset the cadence.
   const pollNonTerminal = useCallback(() => {
-    const needsPoll = queueRef.current.filter(
-      (item) => item.kind === 'paper' && !TERMINAL.includes(item.status),
-    );
+    const needsPoll = queueRef.current.filter((item) => !TERMINAL.includes(item.status));
     if (needsPoll.length === 0) return;
 
     needsPoll.forEach((item) => {
-      fetch(`/api/papers/${item.id}`)
+      const url = item.kind === 'review' ? `/api/reviews/${item.id}` : `/api/papers/${item.id}`;
+      fetch(url)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          if (!data?.paper?.status) return;
-          const status: ItemStatus = data.paper.status as ItemStatus;
-          const errorReason: string | null = data.paper.errorReason ?? null;
+          const record = item.kind === 'review' ? data?.review : data?.paper;
+          if (!record?.status) return;
+          const status: ItemStatus = record.status as ItemStatus;
+          const errorReason: string | null = record.errorReason ?? null;
           setQueue((q) =>
             q.map((qi) =>
               qi.id === item.id
@@ -96,6 +95,11 @@ export function UploadForm({
   async function handleUpload(file?: File) {
     if (uploading) return;
     if (!file && !pasteText.trim()) return;
+    // Reviews must land in a collection or they become unfindable (mirrors the server guard).
+    if (kind === 'review' && !collectionId) {
+      setUploadError('Pick a collection for this review so it can be found later.');
+      return;
+    }
 
     setUploading(true);
     setUploadError(null);
@@ -465,11 +469,6 @@ export function UploadForm({
                       style={{ color: 'var(--danger)', marginTop: 4 }}
                     >
                       {item.errorReason || "Couldn’t extract text — try a text-based PDF"}
-                    </div>
-                  )}
-                  {item.kind === 'review' && !TERMINAL.includes(item.status) && (
-                    <div className="meta" style={{ color: 'var(--muted)', marginTop: 4 }}>
-                      Review processing status unavailable — refresh the page to check.
                     </div>
                   )}
                 </div>

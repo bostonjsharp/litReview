@@ -1,0 +1,207 @@
+# LitReview — Bug & Feature Backlog
+
+Recorded 2026-06-03 from a working session. Each item has an ID, a status, and
+(where known) a code-location hypothesis to start from. Hypotheses are based on a
+codebase survey, not yet confirmed by reproduction.
+
+Status legend: `new` · `investigating` · `in-progress` · `done` · `wontfix`
+
+---
+
+## Vision
+
+LitReview is **one centralized place to store papers, their reviews, and their
+notes** so they're easily digestible and reusable across different projects.
+
+It must do both halves of "review":
+- **Create new literature reviews** in-app (synthesize annotations across papers into
+  a written review you can publish/export), and
+- **Store existing ones** (upload reviews you already have).
+
+Papers, annotations, and reviews should be reusable assets — capture once, apply to
+many projects/collections — not locked to a single collection. This drives FEAT-3
+(reusable paper library), the review model (BUG-11/FEAT-5), and the matrix as the
+cross-paper synthesis surface.
+
+---
+
+## Bugs
+
+### BUG-1 — Google login intermittently failed in the lab
+- **Status:** code root cause fixed; environment verification pending (user)
+- **Report:** During lab testing, Google login didn't work once. Need to confirm it isn't consistent.
+- **Code root cause (FIXED):** `requireUser` did a non-atomic check-then-insert by email
+  (`src/lib/session.ts`). On a brand-new user's first login, concurrent requests both
+  pass the existence check then both INSERT → unique-violation on `users.email` → one
+  request 500s. You're logged in but the first page errors → looks like "login didn't
+  work," intermittently. Fixed by extracting an idempotent `ensureUser` (`src/lib/users.ts`,
+  `onConflictDoNothing` + re-select); reproduced by a 6-way concurrency test
+  (`tests/integration/ensure-user.test.ts`).
+- **Environment check (please verify in the lab):**
+  1. `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are set in the lab/deploy environment (not just locally).
+  2. `AUTH_SECRET` is set and **stable** across restarts (a rotating secret invalidates sessions mid-use).
+  3. In Google Cloud Console → Credentials, the **Authorized redirect URI** includes the
+     exact lab URL: `https://<lab-host>/api/auth/callback/google` (scheme + host must match).
+  4. `AUTH_URL`/`NEXTAUTH_URL` (if set) matches the lab host.
+  If login fails consistently in the lab, it's almost certainly #1 or #3, not the race.
+
+### BUG-2 — Can't always add notes to a paper (works sometimes)
+- **Status:** FIXED
+- **Report:** Adding a note/annotation succeeds sometimes, fails others — possibly latency.
+- **Root cause:** `createAnnotation` inserted the row then `await embedAnnotation()` (a
+  synchronous OpenAI call), and the route returned HTTP 400 on any error. When the
+  embedding was slow/failed, the note was already saved but the API reported failure →
+  UI showed an error and didn't render it; it reappeared on refresh. Save and embed were
+  coupled and non-atomic.
+- **Fix:** embedding is now best-effort (`embedBestEffort` in `src/lib/annotate/service.ts`)
+  — the note always persists and returns 201; a failed embed is logged and re-embeds on
+  next edit. Test: "persists and returns the annotation even when embedding fails"
+  (`tests/integration/annotation-service.test.ts`).
+- **Follow-up (optional):** move the success-path embed to `after()` so the save is also
+  instant under normal latency (not just failure-safe).
+
+### BUG-3 — Highlight & note icon doesn't disappear when the highlight is gone
+- **Status:** new
+- **Report:** When a highlighted section is removed, its icon/marker lingers.
+- **Notes:** Reader is `AnnotationReader.tsx`; highlights computed via `sliceSegment()`. Likely a stale-state / missing re-render after delete (local state not pruned, or marker keyed off old data).
+
+### BUG-4 — Settings gear inside the paper view does nothing
+- **Status:** new
+- **Report:** The gear icon in the immersive paper reader has no handler.
+- **Notes:** Reader at `/workspaces/[id]/(immersive)/papers/[pid]`. Decide what the gear should do (reader prefs: font size, highlight colors, who-annotated filter) — ties into FEAT-2 and FEAT-?.
+
+### BUG-5 — Lit matrix: AI can suggest themes, but users can't create themes inline
+- **Status:** new
+- **Report:** "Suggest themes" (AI) exists, but no UI to create a theme manually. Users should be able to create a theme at highlight time and select one.
+- **Notes:** API already exists — POST `/api/collections/[id]/themes` (create), POST `/api/annotations/[id]/themes` (tag). Missing UI: a "new theme" affordance in the annotation/highlight flow and in the matrix. AI suggest = `lib/themes/suggest.ts`.
+
+### BUG-6 — RAG is too rigid (exact-keyword feel)
+- **Status:** new
+- **Report:** Chat agent should search the corpus more flexibly and synthesize helpful info, not just exact matches.
+- **Notes:** Retrieval = `lib/search/retrieve.ts` (hybrid: vector cosine blended with PG full-text `ts_rank`, top K=8). Chat = `lib/llm/openai.ts`, model `gpt-4o-mini`, system prompt restricts to "ONLY numbered context passages." Levers: increase K, loosen the full-text weight, add query expansion/rewriting, allow multi-hop retrieval, soften the system prompt so the model can reason across passages. See also FEAT-1.
+
+### BUG-7 — Chat grows the page downward; needs a fixed composer + chat sessions
+- **Status:** new
+- **Report:** Chat just extends the page. Composer should stay put (scroll the messages, not the page). Users should create new chats, see history, and resume past chats.
+- **Notes:** `ChatPanel.tsx`. Two parts: (a) layout — fixed-height scroll container with sticky input; (b) NEW data model — there is currently **no** chat/session/message table. Persisting chat history requires schema work (e.g. `chats`, `chatMessages`).
+
+### BUG-8 — No spacing between user message and chat response
+- **Status:** new
+- **Report:** User message and the response visually touch.
+- **Notes:** `ChatPanel.tsx` styling — quick CSS fix. Likely folded into BUG-7 redesign.
+
+### BUG-9 — Chat/annotations should deep-link to the exact spot in the paper
+- **Status:** new
+- **Report:** Citations and pulled annotations should navigate to where the passage/note actually is in the paper.
+- **Notes:** Data exists for this — chunks/annotations store `page`, `charStart`, `charEnd`. Need: anchored URLs (e.g. `?ann=<id>` / `#char-<offset>`) and scroll-to-and-flash behavior in `AnnotationReader.tsx`. Citations currently link to the paper page but not the precise offset.
+
+### BUG-10 — No author "stamp" on annotations
+- **Status:** new / partially exists
+- **Report:** There should be a stamp showing who left an annotation.
+- **Notes:** Survey suggests the sidebar already shows author (with a color). Confirm whether the in-text highlight / icon shows author. If only the sidebar shows it, add an author chip/avatar on the inline marker. `annotations.createdBy` exists.
+
+### BUG-11 — Define what a "review" is (RESOLVED)
+- **Status:** resolved (decision made) → implementation tracked in FEAT-5 / FEAT-7
+- **Decision:** A review is a first-class literature-review document. LitReview must
+  **create new** reviews (compose from annotations across papers → publish/export) and
+  **store existing** ones (upload). Reviews live alongside the papers/notes they draw
+  from so they're easy to apply to other projects. The missing piece is a
+  publish/export step (FEAT-7) and a reliable upload path (FEAT-5).
+
+---
+
+## Features to add
+
+### FEAT-1 — Standalone RAG search bar (not just chat)
+- **Status:** new
+- **Idea:** A search bar that runs corpus retrieval and shows ranked passages directly, bypassing the chat round-trip.
+- **Notes:** Reuse `lib/search/retrieve.ts`; add a `/api/search` (or reuse) + results UI with deep links (see BUG-9).
+
+### FEAT-2 — Multiple highlighter colors
+- **Status:** new
+- **Idea:** Let users pick highlight colors.
+- **Notes:** Needs a `color` column on `annotations` + color picker in the highlight flow + render in `AnnotationReader.tsx`. Could double as a category signal.
+
+### FEAT-3 — A "Papers" tab (all uploaded papers in the workspace)
+- **Status:** new
+- **Idea:** A library view of every paper in the workspace so they can be added to other collections later.
+- **Notes:** Today papers belong to a single collection (`papers.collectionId`). A reusable library implies either many-to-many paper↔collection membership or a workspace-level paper pool. Schema decision required.
+
+### FEAT-4 — Literature matrix usability upgrade (esp. small / half screens)
+- **Status:** new
+- **Idea:** Make `MatrixGrid.tsx` responsive and usable on narrow viewports.
+- **Notes:** Sticky headers/first column, horizontal scroll, collapsible cells, maybe a card/stacked view at small widths.
+
+### FEAT-5 — Rework "upload review" UX (stuck pending → disappears)
+- **Status:** Phase-1 reliability fixes DONE; Phase-4 redesign (attach-to-paper) still open
+- **Report:** Uploading a review document stays pending, says refresh, then disappears.
+- **Root cause (3 parts):** (1) the upload poller only polled *papers* — reviews had no
+  status route, so the UI printed "Review processing status unavailable — refresh the
+  page" and never updated; (2) the "Recent imports" list is ephemeral React state, wiped
+  on refresh; (3) a review uploaded with collection "— none —" (`collectionId: null`) is
+  listed *nowhere* (reviews only render under their collection). The backend pipeline
+  itself reaches `ready` fine (regression test added in `upload-flow.test.ts`).
+- **Fixes done:** added `GET /api/reviews/[id]` status route; `UploadForm` now polls
+  reviews like papers (removed the dead "refresh" message); reviews now require a
+  collection (server guard in `/api/upload` + client guard) so they never orphan.
+- **Still open (Phase 4):** attach reviews to the papers they draw from; a durable/
+  server-fetched recent-imports list; a global reviews view (ties to the vision + FEAT-3).
+
+### FEAT-6 — Profile page
+- **Status:** new
+- **Idea:** A user profile page.
+- **Notes:** No profile/settings route today. `users` table has `name`, `email`, `role`. Scope: view/edit display name, see workspaces, sign out.
+
+### FEAT-7 — Publish / export a review
+- **Status:** new (unblocked by BUG-11 decision)
+- **Idea:** Finish the "create new review" half of the vision: a publish/export step
+  for composed reviews (PDF and/or markdown, plus a read/share view).
+- **Notes:** `reviews` already has a `status` and `bodyText`; entries live in
+  `reviewEntries`. Add an "export" action that renders the ordered blocks
+  (prose + annotation quotes with citations) to a downloadable/shareable artifact.
+
+---
+
+## Phases
+
+Grouped so each phase touches a coherent set of files and unblocks the next. Order is
+a proposal — reprioritize freely. "Effort" is rough.
+
+### Phase 0 — Quick wins (low effort, high visibility)
+Build momentum; mostly CSS/state fixes, no schema.
+- BUG-8 — chat message spacing (CSS)
+- BUG-3 — stale highlight/note icon after delete (state)
+- BUG-10 — author stamp on inline annotations (likely small)
+
+### Phase 1 — Stabilize core (things that break trust)
+Reliability first — these make people distrust the app.
+- BUG-1 — confirm/fix Google login (needs repro)
+- BUG-2 — make note saving reliable (decouple embedding from the save path)
+- FEAT-5 — fix review upload getting stuck pending → disappearing (surface `errorReason`)
+
+### Phase 2 — Reader & annotation experience
+All centered on `AnnotationReader.tsx` + the annotation flow — touch it once.
+- BUG-5 — create a theme inline when highlighting (API exists, UI missing)
+- FEAT-2 — multiple highlighter colors (adds `annotations.color`)
+- BUG-4 — wire the reader settings gear (reader prefs: font size, colors, author filter)
+- BUG-9 — deep-link to the exact passage/annotation (anchored URLs + scroll-to-flash)
+
+### Phase 3 — Chat & RAG
+- BUG-7 — chat windowing (fixed composer) + chat sessions & history (NEW schema)
+- BUG-6 — looser/smarter retrieval (query expansion, K, softened prompt)
+- BUG-9 — chat citations deep-link into the paper (shared with Phase 2)
+- FEAT-1 — standalone RAG search bar (reuse retrieval)
+
+### Phase 4 — Synthesis & reviews (the vision)
+The centralized, reusable store + create/store reviews.
+- FEAT-3 — Papers tab / reusable paper library across collections (schema decision)
+- FEAT-4 — literature matrix usability on small/half screens
+- FEAT-7 — publish/export composed reviews
+- FEAT-5 (cont.) — attach reviews to the papers they draw from
+
+### Phase 5 — Account & polish
+- FEAT-6 — profile page
+
+### Cross-cutting note
+BUG-9 spans Phases 2 and 3 (one anchoring mechanism, two call sites). Building the
+anchor/scroll-to behavior in Phase 2 makes the chat side in Phase 3 nearly free.

@@ -9,6 +9,17 @@ interface Deps {
   llm: LLMProvider;
 }
 
+// Embedding feeds the search index — it must never decide whether the user's note
+// is saved. A slow/failed embedding call (the usual culprit behind "the note saved
+// sometimes") is swallowed here; the annotation persists and re-embeds on next edit.
+async function embedBestEffort(annotationId: string, deps: Deps): Promise<void> {
+  try {
+    await embedAnnotation(annotationId, deps);
+  } catch (err) {
+    console.error(`embedAnnotation failed for ${annotationId}; annotation saved without a chunk`, err);
+  }
+}
+
 export interface CreateAnnotationInput {
   paperId: string;
   createdBy: string | null;
@@ -37,7 +48,7 @@ export async function createAnnotation(input: CreateAnnotationInput, deps: Deps)
       comment: input.comment,
     })
     .returning();
-  await embedAnnotation(row.id, deps);
+  await embedBestEffort(row.id, deps);
   return row;
 }
 
@@ -49,7 +60,7 @@ export async function updateAnnotation(id: string, comment: string, deps: Deps) 
     .where(eq(schema.annotations.id, id))
     .returning();
   if (!row) throw new Error('annotation not found');
-  await embedAnnotation(id, deps);
+  await embedBestEffort(id, deps);
   return row;
 }
 

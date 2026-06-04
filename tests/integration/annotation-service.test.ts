@@ -21,6 +21,25 @@ describe('annotation service', () => {
     expect(await annChunks(ann.id)).toHaveLength(1);
   });
 
+  it('persists and returns the annotation even when embedding fails', async () => {
+    const [p] = await ctx.db.insert(ctx.schema.papers).values({ title: 'P', status: 'ready', pageOffsets: [0] }).returning();
+    const failing = {
+      db: ctx.db,
+      schema: ctx.schema,
+      llm: { embed: vi.fn(async () => { throw new Error('embedding service unavailable'); }), chat: vi.fn() } as any,
+    };
+    // The note is the user's data — a flaky embedding call must never lose it or surface as a save failure.
+    const ann = await createAnnotation(
+      { paperId: p.id, createdBy: null, charStart: 0, charEnd: 4, quote: 'word', comment: 'note' },
+      failing,
+    );
+    const rows = await ctx.db.select().from(ctx.schema.annotations).where(eq(ctx.schema.annotations.id, ann.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].comment).toBe('note');
+    // No chunk yet (embedding failed) — but the annotation is safe and re-embeds on next edit.
+    expect(await annChunks(ann.id)).toHaveLength(0);
+  });
+
   it('rejects an invalid range', async () => {
     const [p] = await ctx.db.insert(ctx.schema.papers).values({ title: 'P', status: 'ready' }).returning();
     await expect(createAnnotation({ paperId: p.id, createdBy: null, charStart: 5, charEnd: 5, quote: '', comment: 'x' }, deps())).rejects.toThrow();

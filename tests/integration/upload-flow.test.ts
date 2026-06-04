@@ -31,4 +31,16 @@ describe('upload → process → chat flow', () => {
     expect(res.answer).toBe('Transformers win.');
     expect(res.citations[0].title).toBe('RNN vs Transformer');
   });
+
+  it('an uploaded review is processed to ready (so "stuck pending" is a UI-polling gap, not a pipeline bug)', async () => {
+    const [r] = await ctx.db.insert(ctx.schema.reviews).values({ title: 'Survey', status: 'pending' }).returning();
+    const llm = { embed: vi.fn(async (texts: string[]) => texts.map(() => Array(1536).fill(0))), chat: vi.fn() } as any;
+    await processDocument(
+      { parentType: 'review', parentId: r.id, pastedText: 'A synthesis of the field. '.repeat(50) },
+      { db: ctx.db, schema: ctx.schema, llm },
+    );
+    const [done] = await ctx.db.select().from(ctx.schema.reviews).where(eq(ctx.schema.reviews.id, r.id));
+    expect(done.status).toBe('ready');
+    expect(done.bodyText).toContain('synthesis');
+  });
 });

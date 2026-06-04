@@ -18,6 +18,14 @@ export async function POST(req: Request) {
   if (!workspaceId) return Response.json({ error: 'workspaceId required' }, { status: 400 });
   if (!(await requireMember(workspaceId, user.id))) return new Response('Forbidden', { status: 403 });
   const collectionId = (form.get('collectionId') as string) || null;
+  // Reviews are only ever listed under a collection, so one uploaded without a collection
+  // becomes invisible ("disappears"). Require it up front rather than silently orphaning.
+  if (kind === 'review' && !collectionId) {
+    return Response.json(
+      { error: 'Pick a collection for this review so it can be found later.' },
+      { status: 400 },
+    );
+  }
   const title = (form.get('title') as string) || null;
   const file = form.get('file') as File | null;
   const pastedText = (form.get('text') as string) || null;
