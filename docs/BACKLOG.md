@@ -76,9 +76,16 @@ cross-paper synthesis surface.
 - **Resolution:** `ThemePop` in `AnnotationReader.tsx` now has a "+ New theme" input that creates the theme (`POST /api/collections/[id]/themes`) and auto-selects it; `collectionId` is plumbed into the reader and `themes` is local state so created themes appear everywhere without reload. Helper `normalizeThemeName` (`src/lib/themes/name.ts`). Still open later: the same affordance in the matrix view.
 
 ### BUG-6 — RAG is too rigid (exact-keyword feel)
-- **Status:** new
+- **Status:** DONE (Phase 3b)
 - **Report:** Chat agent should search the corpus more flexibly and synthesize helpful info, not just exact matches.
-- **Notes:** Retrieval = `lib/search/retrieve.ts` (hybrid: vector cosine blended with PG full-text `ts_rank`, top K=8). Chat = `lib/llm/openai.ts`, model `gpt-4o-mini`, system prompt restricts to "ONLY numbered context passages." Levers: increase K, loosen the full-text weight, add query expansion/rewriting, allow multi-hop retrieval, soften the system prompt so the model can reason across passages. See also FEAT-1.
+- **Resolution:** Each question is rewritten into a history-aware, expanded search query
+  (`rewriteSearchQuery` in `src/lib/chat/rewrite.ts`, one `llm.complete()` call, falls back
+  to the raw question) before retrieval; `answerQuestion` retrieves on the rewritten query
+  but answers the user's original wording. Retrieval tuned: default `k` 8→12, hybrid keyword
+  weight 0.1→0.05 (semantic leads). The answer prompt (`openai.ts`) now synthesizes/reasons
+  across passages and refuses far less eagerly — still corpus-only and cited (no outside
+  knowledge). Also delivered the history-aware retrieval 3a deferred. Spec/plan in
+  `docs/superpowers/{specs,plans}/2026-06-04-phase3b-smarter-retrieval*`.
 
 ### BUG-7 — Chat grows the page downward; needs a fixed composer + chat sessions
 - **Status:** DONE (Phase 3a)
