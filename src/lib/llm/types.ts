@@ -10,6 +10,8 @@ export interface ChunkSource {
   parentId: string;
   title: string;
   page: number | null;
+  charStart: number;
+  paperId: string | null;
 }
 
 export interface RetrievedChunk {
@@ -23,6 +25,8 @@ export interface Citation {
   parentId: string;
   title: string;
   page: number | null;
+  charStart: number;
+  paperId: string | null;
 }
 
 export interface ChatResult {

@@ -25,9 +25,9 @@ describe('OpenAIProvider', () => {
 
   it('chat maps cited indexes back to RetrievedChunk sources', async () => {
     const p = new OpenAIProvider(fakeClient());
-    const ctx = [{ id: 'c1', text: 'hello', source: { parentType: 'paper' as const, parentId: 'p1', title: 'Smith 2020', page: 3 } }];
+    const ctx = [{ id: 'c1', text: 'hello', source: { parentType: 'paper' as const, parentId: 'p1', title: 'Smith 2020', page: 3, charStart: 0, paperId: 'p1' } }];
     const res = await p.chat([{ role: 'user', content: 'q?' }], ctx);
     expect(res.answer).toContain('Yes');
-    expect(res.citations).toEqual([{ parentType: 'paper', parentId: 'p1', title: 'Smith 2020', page: 3 }]);
+    expect(res.citations).toEqual([{ parentType: 'paper', parentId: 'p1', title: 'Smith 2020', page: 3, charStart: 0, paperId: 'p1' }]);
   });
 });

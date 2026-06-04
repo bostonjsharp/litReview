@@ -41,6 +41,7 @@ export async function retrieve(
       parentType: schema.chunks.parentType,
       parentId: schema.chunks.parentId,
       page: schema.chunks.page,
+      charStart: schema.chunks.charStart,
     })
     .from(schema.chunks)
     .where(where)
@@ -62,7 +63,14 @@ export async function retrieve(
       out.push({
         id: r.id,
         text: r.text,
-        source: { parentType: 'annotation', parentId: r.parentId, title: `Note on ${paper?.title ?? 'Untitled'}`, page: r.page },
+        source: {
+          parentType: 'annotation',
+          parentId: r.parentId,
+          title: `Note on ${paper?.title ?? 'Untitled'}`,
+          page: r.page,
+          charStart: r.charStart,
+          paperId: ann?.paperId ?? null,
+        },
       });
       continue;
     }
@@ -71,7 +79,14 @@ export async function retrieve(
     out.push({
       id: r.id,
       text: r.text,
-      source: { parentType: r.parentType, parentId: r.parentId, title: parent?.title ?? 'Untitled', page: r.page },
+      source: {
+        parentType: r.parentType,
+        parentId: r.parentId,
+        title: parent?.title ?? 'Untitled',
+        page: r.page,
+        charStart: r.charStart,
+        paperId: r.parentType === 'paper' ? r.parentId : null,
+      },
     });
   }
   return out;

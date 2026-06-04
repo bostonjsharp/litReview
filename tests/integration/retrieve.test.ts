@@ -42,4 +42,29 @@ describe('retrieve', () => {
     const res = await retrieve('anything', fakeLLM(vec), ctx.db, { schema: ctx.schema }); // no k
     expect(res).toHaveLength(12);
   });
+
+  it('carries charStart and paperId on a paper-chunk source', async () => {
+    const [p] = await ctx.db.insert(ctx.schema.papers).values({ title: 'Loc', status: 'ready' }).returning();
+    const vec = Array(1536).fill(0); vec[2] = 1; // unique dimension → deterministically nearest
+    await ctx.db.insert(ctx.schema.chunks).values({
+      parentType: 'paper', parentId: p.id, chunkIndex: 0, text: 'located text',
+      embedding: vec, page: 1, charStart: 42, charEnd: 54,
+    });
+    const res = await retrieve('q', fakeLLM(vec), ctx.db, { k: 1, schema: ctx.schema });
+    expect(res[0].source.charStart).toBe(42);
+    expect(res[0].source.paperId).toBe(p.id);
+  });
+
+  it('sets paperId to the containing paper for a note chunk', async () => {
+    const [p] = await ctx.db.insert(ctx.schema.papers).values({ title: 'Host', status: 'ready' }).returning();
+    const [a] = await ctx.db.insert(ctx.schema.annotations).values({ paperId: p.id, charStart: 0, charEnd: 4, quote: 'x', comment: 'y' }).returning();
+    const vec = Array(1536).fill(0); vec[3] = 1; // unique dimension
+    await ctx.db.insert(ctx.schema.chunks).values({
+      parentType: 'annotation', parentId: a.id, chunkIndex: 0, text: 'note text',
+      embedding: vec, page: 1, charStart: 0, charEnd: 9,
+    });
+    const res = await retrieve('q', fakeLLM(vec), ctx.db, { k: 1, schema: ctx.schema });
+    expect(res[0].source.parentType).toBe('annotation');
+    expect(res[0].source.paperId).toBe(p.id);
+  });
 });

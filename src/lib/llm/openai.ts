@@ -52,6 +52,8 @@ export class OpenAIProvider implements LLMProvider {
         parentId: c.source.parentId,
         title: c.source.title,
         page: c.source.page,
+        charStart: c.source.charStart,
+        paperId: c.source.paperId,
       }));
     return { answer: parsed.answer, citations };
   }
