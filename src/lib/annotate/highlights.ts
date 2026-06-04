@@ -26,3 +26,16 @@ export function sliceSegment(seg: TextSegment, annotations: HlAnnotation[]): Seg
   if (cursor < segEnd) parts.push({ text: seg.text.slice(cursor - segStart) });
   return parts;
 }
+
+// Given the ordered sequence of annotation ids rendered across the document (null for
+// plain-text parts), returns a parallel boolean[] flagging the FIRST appearance of each
+// id. Used to give exactly one stable anchor (#hl-<id>) per annotation, even when its
+// highlight is split across paragraphs.
+export function firstOccurrenceFlags(annIds: (string | null)[]): boolean[] {
+  const seen = new Set<string>();
+  return annIds.map((id) => {
+    if (id == null || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
