@@ -81,15 +81,19 @@ function ThemePop({
 }) {
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   async function submitNew() {
     if (creating) return;
+    setCreateError(null);
     setCreating(true);
     const theme = await onCreate(newName);
     setCreating(false);
     if (theme) {
       setNewName('');
       onPick(theme.id); // auto-select the freshly created theme
+    } else {
+      setCreateError('Could not create theme. Try again.');
     }
   }
 
@@ -141,7 +145,13 @@ function ThemePop({
               <Icon name="plus" size={12} />
             </button>
           </div>
-        ) : (
+        ) : null}
+        {createError && (
+          <p style={{ padding: '2px 10px 6px', fontSize: 12, color: 'var(--error, oklch(0.55 0.18 30))' }}>
+            {createError}
+          </p>
+        )}
+        {!canCreate && (
           // A paper with no collection has no collection-scoped themes to show or create.
           <p style={{ padding: '6px 10px', fontSize: 12, color: 'var(--faint)' }}>
             Add this paper to a collection to use themes.
@@ -211,6 +221,7 @@ export function AnnotationReader({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deepLinkedRef = useRef(false);
 
   // ─── Selection handling ────────────────────────────────────────────────────
 
@@ -438,11 +449,15 @@ export function AnnotationReader({
   }, []);
 
   // Deep-link: ?ann=<id> scrolls to and flashes the highlight, and activates its note.
+  // Fires at most once — guarded by a ref so saving a note (which replaces `annotations`)
+  // doesn't re-scroll/re-flash the deep-linked highlight while ?ann= is still in the URL.
   useEffect(() => {
+    if (deepLinkedRef.current) return;
     const annId = new URLSearchParams(window.location.search).get('ann');
     if (!annId || !annotations.some((a) => a.id === annId)) return;
     const el = document.getElementById('hl-' + annId);
     if (!el) return;
+    deepLinkedRef.current = true;
     const activate = setTimeout(() => {
       setActiveId(annId);
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
