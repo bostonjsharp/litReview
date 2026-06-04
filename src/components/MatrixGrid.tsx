@@ -69,7 +69,7 @@ export function MatrixGrid({ matrix, workspaceId }: { matrix: Matrix; workspaceI
                           <div className="cn-q">&ldquo;{n.quote}&rdquo;</div>
                           <div className="cn-p">
                             <Icon name="link" size={11} />
-                            <Link href={`/workspaces/${workspaceId}/papers/${p.id}`}>
+                            <Link href={`/workspaces/${workspaceId}/papers/${p.id}?ann=${n.id}`}>
                               {n.page != null ? `p.${n.page}` : 'view'}
                             </Link>
                           </div>
