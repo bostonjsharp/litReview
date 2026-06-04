@@ -214,10 +214,19 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
 }
 
 /* ── Chat: windowed two-pane layout (history rail + conversation) ── */
+/* The chat is a full-bleed two-pane app, so it opts out of the shell's centered,
+   max-width, padded .app-canvas and fills the whole content area (rail pinned to the
+   left edge, conversation filling the rest). */
+.app-canvas:has(.chat-layout) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
 .chat-layout {
   display: flex;
-  /* Fill the area under the top bar so only the message list scrolls (not the page). */
-  height: calc(100dvh - var(--topbar-h, 64px));
+  /* Fill the content area so only the message list scrolls (not the page). */
+  height: 100%;
   min-height: 0;
 }
 .chat-rail {
