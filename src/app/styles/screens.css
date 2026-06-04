@@ -149,11 +149,11 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
 .suggest-foot { padding: var(--s4) var(--s5); border-top: 1px solid var(--border); display: flex; gap: 10px; }
 
 /* ---------- CHAT ---------- */
-.chat { display: flex; flex-direction: column; height: 100%; max-width: 860px; margin: 0 auto; width: 100%; }
+.chat { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .chat-scope { display: flex; align-items: center; gap: 10px; padding: 14px var(--s6); border-bottom: 1px solid var(--border); flex: none; }
 .scope-pill { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); font-size: 13px; font-weight: 600; color: var(--ink-2); background: var(--surface); white-space: nowrap; }
 .scope-pill.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-soft-border); }
-.chat-scroll { flex: 1; overflow-y: auto; padding: var(--s6); display: flex; flex-direction: column; gap: var(--s6); }
+.chat-scroll { flex: 1; overflow-y: auto; padding: var(--s6); display: flex; flex-direction: column; gap: var(--s6); min-height: 0; }
 .msg-q { align-self: flex-end; max-width: 76%; background: var(--accent); color: var(--accent-ink); padding: 13px 18px; border-radius: 16px 16px 4px 16px; font-size: 15px; line-height: 1.5; }
 .msg-a { max-width: 100%; display: flex; gap: 14px; }
 .msg-a .ai-mark { width: 32px; height: 32px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
@@ -242,13 +242,10 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
 .chat-rail-del { opacity: 0; color: var(--faint); }
 .chat-rail-item:hover .chat-rail-del { opacity: 1; }
 
-.chat { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.chat-scroll { flex: 1; overflow-y: auto; min-height: 0; }
 .chat-input-wrap { flex-shrink: 0; }
-
-/* BUG-8: breathing room between a question and the answer that follows it */
-.msg-a { margin-top: 16px; }
-.msg-q + .msg-a { margin-top: 12px; }
+/* BUG-8: each message is now a direct flex child of .chat-scroll, so the existing
+   `gap: var(--s6)` spaces every message — including each question and its answer. No
+   extra per-message margins are needed (they would double the spacing). */
 
 /* Narrow screens: the rail is hidden unless toggled open (the wrapper gets the
    `collapsed-mobile` class when closed — see Task 8). On desktop the media query does

@@ -125,9 +125,14 @@ export function ChatPanel({
   }
 
   async function deleteChat(id: string) {
-    await fetch(`/api/chats/${id}`, { method: 'DELETE' });
+    const wasActive = activeChatId === id;
+    const res = await fetch(`/api/chats/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      setError('Could not delete chat.');
+      return;
+    }
     setChats((prev) => prev.filter((c) => c.id !== id));
-    if (activeChatId === id) newChat();
+    if (wasActive) newChat();
   }
 
   function scopeForCreate() {
