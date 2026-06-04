@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { splitIntoSegments, resolveSelection } from '@/lib/annotate/offsets';
-import { sliceSegment } from '@/lib/annotate/highlights';
+import { sliceSegment, firstOccurrenceFlags } from '@/lib/annotate/highlights';
 import type { HlAnnotation } from '@/lib/annotate/highlights';
 import { matchesThemeFocus, isDimmed } from '@/lib/annotate/themeFilter';
 import { Icon } from '@/components/ui/Icon';
@@ -411,6 +411,7 @@ export function AnnotationReader({
     if (activateTimerRef.current != null) clearTimeout(activateTimerRef.current);
     activateTimerRef.current = setTimeout(() => {
       document.getElementById('note-' + annId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('hl-' + annId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 30);
   }
 
@@ -436,6 +437,24 @@ export function AnnotationReader({
     };
   }, []);
 
+  // Deep-link: ?ann=<id> scrolls to and flashes the highlight, and activates its note.
+  useEffect(() => {
+    const annId = new URLSearchParams(window.location.search).get('ann');
+    if (!annId || !annotations.some((a) => a.id === annId)) return;
+    const el = document.getElementById('hl-' + annId);
+    if (!el) return;
+    const activate = setTimeout(() => {
+      setActiveId(annId);
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('hl-flash');
+    }, 0);
+    const removeFlash = setTimeout(() => el.classList.remove('hl-flash'), 1200);
+    return () => {
+      clearTimeout(activate);
+      clearTimeout(removeFlash);
+    };
+  }, [annotations]);
+
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   const themeMap = Object.fromEntries(themes.map((t) => [t.id, t]));
@@ -445,15 +464,37 @@ export function AnnotationReader({
     [annotations],
   );
 
-  function renderParagraph(segOffset: number, segText: string) {
-    const parts = sliceSegment({ offset: segOffset, text: segText }, hlAnns);
-    return parts.map((part, i) => {
+  // Parts per segment (computed once) + the set of "<si>:<pi>" positions that should
+  // carry the #hl-<annId> anchor (the first rendered mark of each annotation).
+  const segParts = useMemo(
+    () => segments.map((seg) => sliceSegment({ offset: seg.offset, text: seg.text }, hlAnns)),
+    [segments, hlAnns],
+  );
+  const anchoredPositions = useMemo(() => {
+    const flat = segParts.flatMap((parts) => parts.map((p) => p.annId ?? null));
+    const flags = firstOccurrenceFlags(flat);
+    const set = new Set<string>();
+    let k = 0;
+    segParts.forEach((parts, si) => {
+      parts.forEach((_p, pi) => {
+        if (flags[k]) set.add(`${si}:${pi}`);
+        k += 1;
+      });
+    });
+    return set;
+  }, [segParts]);
+
+  function renderParagraph(si: number) {
+    const parts = segParts[si];
+    return parts.map((part, pi) => {
       if (!part.annId) return part.text;
       const isActive = activeId === part.annId;
-      const dim = isDimmed(part.annId!, focusThemeId, tagsByAnnotation);
+      const dim = isDimmed(part.annId, focusThemeId, tagsByAnnotation);
+      const anchored = anchoredPositions.has(`${si}:${pi}`);
       return (
         <mark
-          key={i}
+          key={pi}
+          id={anchored ? `hl-${part.annId}` : undefined}
           className={'hl' + (isActive ? ' active' : '') + (dim ? ' hl-dim' : '')}
           tabIndex={0}
           onClick={(e) => {
@@ -524,7 +565,7 @@ export function AnnotationReader({
             ) : (
               segments.map((seg, i) => (
                 <p key={seg.offset} data-base={seg.offset} className={i === 0 ? 'dropcap' : ''}>
-                  {renderParagraph(seg.offset, seg.text)}
+                  {renderParagraph(i)}
                 </p>
               ))
             )}
@@ -688,11 +729,11 @@ export function AnnotationReader({
                 className={'note' + (isActive ? ' active' : '')}
                 role="button"
                 tabIndex={0}
-                onClick={() => setActiveId(a.id)}
+                onClick={() => activateMark(a.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setActiveId(a.id);
+                    activateMark(a.id);
                   }
                 }}
               >

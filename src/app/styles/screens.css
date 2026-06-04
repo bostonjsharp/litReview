@@ -181,6 +181,21 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
 .chat-suggest button { text-align: left; padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--r); font-size: 14px; color: var(--ink-2); background: var(--surface); transition: all .14s; }
 .chat-suggest button:hover { border-color: var(--accent-soft-border); color: var(--ink); background: var(--surface-2); }
 
+/* Deep-link flash — pulse a ring around a highlight when navigated to via ?ann= */
+@keyframes hl-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  25% {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+.hl.hl-flash {
+  animation: hl-flash 1.2s ease-out;
+  border-radius: 2px;
+}
+
 /* Theme focus filter — dim highlights that don't match the focused theme */
 .hl.hl-dim {
   opacity: 0.3;
