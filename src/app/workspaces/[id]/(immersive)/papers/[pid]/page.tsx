@@ -86,6 +86,7 @@ export default async function PaperPage({
   return (
     <AnnotationReader
       paperId={paper.id}
+      collectionId={paper.collectionId}
       fullText={paper.fullText ?? ''}
       paper={{
         title: paper.title ?? 'Untitled',

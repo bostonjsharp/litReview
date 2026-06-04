@@ -7,6 +7,7 @@ import { sliceSegment } from '@/lib/annotate/highlights';
 import type { HlAnnotation } from '@/lib/annotate/highlights';
 import { Icon } from '@/components/ui/Icon';
 import { Avatar } from '@/components/ui/Avatar';
+import { normalizeThemeName } from '@/lib/themes/name';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ interface PaperMeta {
 
 interface Props {
   paperId: string;
+  collectionId: string | null;
   fullText: string;
   paper: PaperMeta;
   pageCount: number | null;
@@ -66,21 +68,34 @@ function ThemePop({
   activeThemeIds,
   onPick,
   close,
+  canCreate,
+  onCreate,
 }: {
   themes: Theme[];
   activeThemeIds: string[];
   onPick: (id: string) => void;
   close: () => void;
+  canCreate: boolean;
+  onCreate: (name: string) => Promise<Theme | null>;
 }) {
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  async function submitNew() {
+    if (creating) return;
+    setCreating(true);
+    const theme = await onCreate(newName);
+    setCreating(false);
+    if (theme) {
+      setNewName('');
+      onPick(theme.id); // auto-select the freshly created theme
+    }
+  }
+
   return (
     <>
       <div className="menu-scrim" onClick={close} />
       <div className="theme-pop fade-enter" style={{ top: 28, left: 0 }}>
-        {themes.length === 0 && (
-          <p style={{ padding: '8px 10px', fontSize: 13, color: 'var(--muted)' }}>
-            No themes in this collection.
-          </p>
-        )}
         {themes.map((t) => (
           <button
             key={t.id}
@@ -95,6 +110,42 @@ function ThemePop({
             )}
           </button>
         ))}
+        {canCreate ? (
+          <div className="theme-pop-new" style={{ display: 'flex', gap: 4, padding: '6px 8px' }}>
+            <input
+              className="input"
+              style={{ height: 30, fontSize: 13 }}
+              placeholder="New theme…"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  submitNew();
+                }
+              }}
+              disabled={creating}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                submitNew();
+              }}
+              disabled={creating || normalizeThemeName(newName) === null}
+              aria-label="Create theme"
+            >
+              <Icon name="plus" size={12} />
+            </button>
+          </div>
+        ) : (
+          // A paper with no collection has no collection-scoped themes to show or create.
+          <p style={{ padding: '6px 10px', fontSize: 12, color: 'var(--faint)' }}>
+            Add this paper to a collection to use themes.
+          </p>
+        )}
       </div>
     </>
   );
@@ -104,11 +155,12 @@ function ThemePop({
 
 export function AnnotationReader({
   paperId,
+  collectionId,
   fullText,
   paper,
   pageCount,
   annotations: initialAnnotations,
-  themes,
+  themes: initialThemes,
   tagsByAnnotation: initialTagsByAnnotation,
   backHref,
   backLabel,
@@ -117,6 +169,7 @@ export function AnnotationReader({
 
   // State
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
+  const [themes, setThemes] = useState<Theme[]>(initialThemes);
   const [tagsByAnnotation, setTagsByAnnotation] = useState<Record<string, string[]>>(
     initialTagsByAnnotation,
   );
@@ -329,6 +382,23 @@ export function AnnotationReader({
     }
   }
 
+  // Creates a collection theme inline and adds it to local state so every picker sees it.
+  // Returns the new theme (so the caller can select it) or null on no-op/failure.
+  async function createThemeInline(name: string): Promise<Theme | null> {
+    if (!collectionId) return null;
+    const clean = normalizeThemeName(name);
+    if (!clean) return null;
+    const res = await fetch(`/api/collections/${collectionId}/themes`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: clean }),
+    });
+    if (!res.ok) return null;
+    const theme = (await res.json()) as Theme;
+    setThemes((prev) => (prev.some((t) => t.id === theme.id) ? prev : [...prev, theme]));
+    return theme;
+  }
+
   // ─── Activate a mark → set active + scroll to note card ───────────────────
 
   function activateMark(annId: string) {
@@ -524,6 +594,8 @@ export function AnnotationReader({
                       toggleDraftTheme(id);
                     }}
                     close={() => setThemePopFor(null)}
+                    canCreate={collectionId != null}
+                    onCreate={createThemeInline}
                   />
                 )}
               </div>
@@ -608,6 +680,8 @@ export function AnnotationReader({
                         }
                       }}
                       close={() => setThemePopFor(null)}
+                      canCreate={collectionId != null}
+                      onCreate={createThemeInline}
                     />
                   )}
                 </div>
