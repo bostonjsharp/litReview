@@ -19,9 +19,12 @@ export class OpenAIProvider implements LLMProvider {
     const system: ChatMessage = {
       role: 'system',
       content:
-        'You answer questions about a corpus of academic papers and literature reviews. ' +
-        'Use ONLY the numbered context passages. If the answer is not in the context, say ' +
-        '"I could not find this in the corpus." Cite sources by their bracket number. ' +
+        'You answer questions about a corpus of academic papers and literature reviews, using ' +
+        'ONLY the numbered context passages. Synthesize and reason across the passages — connect ' +
+        'related points, compare findings, and infer what they collectively support — to give a ' +
+        'thorough, genuinely helpful answer. Do not use outside knowledge. Cite the passages you ' +
+        'rely on by their bracket number. Only if the passages genuinely do not address the ' +
+        'question, answer exactly "I could not find this in the corpus." ' +
         'Respond as strict JSON: {"answer": string, "citationIndexes": number[]}. ' +
         'citationIndexes lists the 1-based context passages you actually used.',
     };
