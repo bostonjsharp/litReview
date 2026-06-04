@@ -81,14 +81,20 @@ cross-paper synthesis surface.
 - **Notes:** Retrieval = `lib/search/retrieve.ts` (hybrid: vector cosine blended with PG full-text `ts_rank`, top K=8). Chat = `lib/llm/openai.ts`, model `gpt-4o-mini`, system prompt restricts to "ONLY numbered context passages." Levers: increase K, loosen the full-text weight, add query expansion/rewriting, allow multi-hop retrieval, soften the system prompt so the model can reason across passages. See also FEAT-1.
 
 ### BUG-7 — Chat grows the page downward; needs a fixed composer + chat sessions
-- **Status:** new
+- **Status:** DONE (Phase 3a)
 - **Report:** Chat just extends the page. Composer should stay put (scroll the messages, not the page). Users should create new chats, see history, and resume past chats.
-- **Notes:** `ChatPanel.tsx`. Two parts: (a) layout — fixed-height scroll container with sticky input; (b) NEW data model — there is currently **no** chat/session/message table. Persisting chat history requires schema work (e.g. `chats`, `chatMessages`).
+- **Resolution:** New `chats` + `chatMessages` tables (private per-user) and a sessions
+  service (`src/lib/chat/sessions.ts`); `/api/chats` routes (create/list/get/delete) and
+  `/api/chats/[id]/messages` (the stateless `/api/chat` was removed). `ChatPanel` is now a
+  two-pane windowed layout (`ChatHistoryRail` + conversation pane) where only the message
+  list scrolls and the composer is pinned; new-chat (lazy create), history, resume, delete.
+  Bounded conversational memory (last ~8 messages) via `answerQuestion`'s new `history`.
 
 ### BUG-8 — No spacing between user message and chat response
-- **Status:** new
+- **Status:** DONE (Phase 3a)
 - **Report:** User message and the response visually touch.
-- **Notes:** `ChatPanel.tsx` styling — quick CSS fix. Likely folded into BUG-7 redesign.
+- **Resolution:** Added `.msg-q + .msg-a` / `.msg-a` margins in `screens.css` as part of the
+  3a layout work.
 
 ### BUG-9 — Chat/annotations should deep-link to the exact spot in the paper
 - **Status:** reader side DONE (Phase 2); chat side open (Phase 3)
