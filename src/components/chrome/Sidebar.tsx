@@ -14,6 +14,7 @@ export function Sidebar({ workspaceId, collections }: {
     : base;
   const nav = [
     { href: base, icon: "layers", label: "Collections", match: (p: string) => p === base },
+    { href: `${base}/papers`, icon: "book", label: "Papers", match: (p: string) => p.endsWith("/papers") },
     { href: matrixHref, icon: "grid", label: "Literature matrix", match: (p: string) => p.includes("/matrix") },
     { href: `${base}/chat`, icon: "chat", label: "Chat", match: (p: string) => p.endsWith("/chat") },
     { href: `${base}/members`, icon: "users", label: "Members", match: (p: string) => p.endsWith("/members") },
