@@ -43,6 +43,13 @@
       "when": 1780600616029,
       "tag": "0005_faulty_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780618279033,
+      "tag": "0006_chunky_siren",
+      "breakpoints": true
     }
   ]
 }

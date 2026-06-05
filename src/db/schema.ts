@@ -120,6 +120,15 @@ export const annotationThemes = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.annotationId, t.themeId] }) }),
 );
 
+export const paperCollections = pgTable(
+  'paper_collections',
+  {
+    paperId: uuid('paper_id').notNull().references(() => papers.id, { onDelete: 'cascade' }),
+    collectionId: uuid('collection_id').notNull().references(() => collections.id, { onDelete: 'cascade' }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.paperId, t.collectionId] }) }),
+);
+
 export const workspaces = pgTable('workspaces', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
