@@ -156,9 +156,15 @@ cross-paper synthesis surface.
   collection it's added to. Spec/plan in `docs/superpowers/{specs,plans}/2026-06-04-phase4a-*`.
 
 ### FEAT-4 — Literature matrix usability upgrade (esp. small / half screens)
-- **Status:** new
+- **Status:** DONE (Phase 4d)
 - **Idea:** Make `MatrixGrid.tsx` responsive and usable on narrow viewports.
-- **Notes:** Sticky headers/first column, horizontal scroll, collapsible cells, maybe a card/stacked view at small widths.
+- **Resolution:** The matrix already had sticky header + first column + scroll; the fix was
+  making it **full-bleed** (`.app-canvas:has(.matrix-page)` opts out of the centered/padded
+  shell canvas) so it fills the content area with a bounded height — making the sticky
+  scroll actually work — plus a `@media (max-width: 900px)` block that drops the table
+  min-width and tightens the first-column/cell widths so more fits on a half-screen before
+  horizontal scrolling. CSS-only (reuses the `:has()` full-bleed pattern from chat). A
+  stacked card view at phone widths was deferred.
 
 ### FEAT-5 — Rework "upload review" UX (stuck pending → disappears)
 - **Status:** Phase-1 reliability fixes DONE; Phase-4 redesign (attach-to-paper) still open

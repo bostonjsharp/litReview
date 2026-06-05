@@ -26,8 +26,8 @@ export default async function MatrixPage({
   const matrix = await getMatrix(cid, { db, schema });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 'none' }}>
+    <div className="matrix-page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ flex: 'none', padding: '0 var(--s6)' }}>
         <PageHead eyebrow={collection.name} title="Literature matrix">
           <SuggestThemesPanel collectionId={cid} />
         </PageHead>

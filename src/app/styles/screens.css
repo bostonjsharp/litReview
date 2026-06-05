@@ -278,3 +278,24 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
   .sidebar, .topbar, .composer-rail, .reader-topbar, .block-handle, .block-add, .composer-title-in { display: none !important; }
   .composer, .composer-main, .composer-doc { display: block; max-width: none; margin: 0; padding: 0; }
 }
+
+/* Matrix fills the content area (bounded height → sticky header/first column work and the
+   full width is usable), opting out of the shell's centered, padded .app-canvas. */
+.app-canvas:has(.matrix-page) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* Small / half screens: let the table shrink and tighten columns so more fits before
+   horizontal scroll; the sticky paper column + theme header keep context. */
+@media (max-width: 900px) {
+  .matrix { min-width: 0; }
+  .matrix thead th.corner,
+  .matrix tbody th { min-width: 150px; max-width: 150px; }
+  .matrix td { min-width: 140px; }
+  .matrix thead th,
+  .matrix tbody th,
+  .matrix td { padding: 10px 12px; }
+}
