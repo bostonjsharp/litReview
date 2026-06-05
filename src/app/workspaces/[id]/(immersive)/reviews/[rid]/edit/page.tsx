@@ -199,6 +199,7 @@ export default async function EditReviewPage({
         collectionName,
         authorName,
         backHref,
+        status: review.status,
       }}
     />
   );

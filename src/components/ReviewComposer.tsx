@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { reviewToMarkdown } from '@/lib/reviews/export';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ export interface ComposerMeta {
   collectionName: string | null;
   authorName: string;
   backHref: string;
+  status: string;
 }
 
 interface Props {
@@ -159,10 +161,12 @@ export function ReviewComposer({
   const [busy, setBusy] = useState(false);
   const [readView, setReadView] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved');
+  const [published, setPublished] = useState(meta.status === 'published');
+  const proseTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // Track per-entry local prose text: prose blocks are CREATED via the API,
-  // but editing an existing block's text is LOCAL-ONLY — there is no PATCH-prose endpoint.
-  // SCOPE DECISION: prose text editing of existing blocks is not persisted.
+  // Track per-entry local prose text: prose blocks are CREATED via the API;
+  // editing an existing block's text is debounced and persisted via PATCH-prose.
   const [localProse, setLocalProse] = useState<Record<string, string>>({});
 
   // Refs for auto-grow textareas
@@ -288,6 +292,77 @@ export function ReviewComposer({
     }
   }
 
+  // ── Debounced prose save ──────────────────────────────────────────────────
+
+  function scheduleProseSave(entryId: string, value: string) {
+    setLocalProse((prev) => ({ ...prev, [entryId]: value }));
+    setSaveState('saving');
+    if (proseTimers.current[entryId]) clearTimeout(proseTimers.current[entryId]);
+    proseTimers.current[entryId] = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/reviews/${reviewId}/entries/${entryId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ prose: value }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setSaveState('saved');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to save prose');
+        setSaveState('saved');
+      }
+    }, 600);
+  }
+
+  // ── Title save ────────────────────────────────────────────────────────────
+
+  async function saveTitle() {
+    setSaveState('saving');
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: localTitle }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSaveState('saved');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save title');
+      setSaveState('saved');
+    }
+  }
+
+  // ── Publish + Export ──────────────────────────────────────────────────────
+
+  async function publish() {
+    setSaveState('saving');
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'published' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setPublished(true);
+      setSaveState('saved');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to publish');
+      setSaveState('saved');
+    }
+  }
+
+  function exportMarkdown() {
+    const merged = entries.map((e) => ({ ...e, prose: localProse[e.id] ?? e.prose }));
+    const md = reviewToMarkdown(localTitle, merged, annLookup);
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (localTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'review') + '.md';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // ── Insert first available note ("Insert note" button) ────────────────────
 
   function insertFirstNote() {
@@ -311,29 +386,26 @@ export function ReviewComposer({
           </Link>
           <div className="grow" />
 
-          {/* Saved indicator (always shows; no dirty-state tracking needed — mutations re-fetch) */}
           <span className="badge badge-ready">
-            <span className="dot" /> Saved
+            <span className="dot" /> {saveState === 'saving' ? 'Saving…' : 'Saved'}
           </span>
 
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => setReadView((v) => !v)}
-            aria-pressed={readView}
-          >
+          <button className="btn btn-ghost btn-sm" onClick={() => setReadView((v) => !v)} aria-pressed={readView}>
             <Icon name="book" size={15} />
             {readView ? 'Edit' : 'Read view'}
           </button>
 
-          {/* SCOPE DECISION: Publish button is a no-op stub — no publish endpoint exists yet. */}
-          <button
-            className="btn btn-primary btn-sm"
-            disabled
-            title="Coming soon"
-            aria-label="Publish (coming soon)"
-          >
-            <Icon name="check" size={15} /> Publish
+          <button className="btn btn-ghost btn-sm" onClick={exportMarkdown}>
+            <Icon name="file" size={15} /> Export .md
           </button>
+
+          {published ? (
+            <span className="badge badge-ready"><span className="dot" /> Published</span>
+          ) : (
+            <button className="btn btn-primary btn-sm" onClick={publish}>
+              <Icon name="check" size={15} /> Publish
+            </button>
+          )}
         </div>
 
         {/* Error banner */}
@@ -367,11 +439,12 @@ export function ReviewComposer({
           <ReadView entries={entries} annLookup={annLookup} title={localTitle} />
         ) : (
           <div className="composer-doc">
-            {/* Title — local-only; no API to rename a review */}
+            {/* Title — persisted on blur via PATCH /api/reviews/:id */}
             <input
               className="composer-title-in"
               value={localTitle}
               onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={saveTitle}
               placeholder="Review title…"
               aria-label="Review title"
             />
@@ -396,10 +469,9 @@ export function ReviewComposer({
                 {entry.kind === 'prose' ? (
                   <div className="block-prose">
                     {/*
-                     * Auto-growing Spectral textarea. Prose text of EXISTING blocks is local-only —
-                     * there is no PATCH-prose endpoint. New prose blocks are created via POST (with
-                     * a blank placeholder), then the user types into the textarea whose value is
-                     * kept in localProse state. Persisting edited text is deferred per spec.
+                     * Auto-growing Spectral textarea. Prose text is debounced and persisted
+                     * via PATCH-prose (scheduleProseSave). New prose blocks are created via
+                     * POST (with a blank placeholder), then the user types into the textarea.
                      */}
                     <textarea
                       ref={(el) => {
@@ -415,7 +487,7 @@ export function ReviewComposer({
                       onInput={(e) => {
                         const el = e.currentTarget;
                         autoGrow(el);
-                        setLocalProse((prev) => ({ ...prev, [entry.id]: el.value }));
+                        scheduleProseSave(entry.id, el.value);
                       }}
                     />
                   </div>
