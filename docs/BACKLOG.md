@@ -144,9 +144,16 @@ cross-paper synthesis surface.
   `matchesThemeFocus`/`isDimmed` (`src/lib/annotate/themeFilter.ts`); `.hl-dim` CSS.
 
 ### FEAT-3 — A "Papers" tab (all uploaded papers in the workspace)
-- **Status:** new
+- **Status:** DONE (Phase 4a)
 - **Idea:** A library view of every paper in the workspace so they can be added to other collections later.
-- **Notes:** Today papers belong to a single collection (`papers.collectionId`). A reusable library implies either many-to-many paper↔collection membership or a workspace-level paper pool. Schema decision required.
+- **Resolution:** New `paper_collections` M:N junction (backfilled from `papers.collectionId`,
+  which is kept as a "home" pointer); membership service `src/lib/papers/collections.ts`.
+  A paper can belong to 0..N collections. New sidebar **Papers** → `/workspaces/[id]/papers`
+  library listing every workspace paper with its collections + "Add to collection"
+  (`AddToCollection`); link/unlink via `/api/papers/[id]/collections`. Collection page,
+  matrix, dashboard counts, theme-tagging, and retrieval collection-scope all read
+  membership from the junction, so a reused paper appears (and is searchable) in every
+  collection it's added to. Spec/plan in `docs/superpowers/{specs,plans}/2026-06-04-phase4a-*`.
 
 ### FEAT-4 — Literature matrix usability upgrade (esp. small / half screens)
 - **Status:** new
