@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 
 interface Deps {
   db: any;
@@ -58,7 +58,9 @@ export async function addMessage(
     .insert(schema.chatMessages)
     .values({ chatId: input.chatId, role: input.role, content: input.content, citations: input.citations ?? null })
     .returning();
-  await db.update(schema.chats).set({ updatedAt: new Date() }).where(eq(schema.chats.id, input.chatId));
+  // Bump with the DB clock (not JS new Date()) so ordering stays consistent with
+  // createdAt/defaultNow(); mixing clocks mis-orders history under app↔DB clock skew.
+  await db.update(schema.chats).set({ updatedAt: sql`now()` }).where(eq(schema.chats.id, input.chatId));
   return row;
 }
 
