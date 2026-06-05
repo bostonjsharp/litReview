@@ -78,3 +78,21 @@ export async function removeEntry(reviewId: string, entryId: string, deps: Deps)
       .where(eq(deps.schema.reviewEntries.id, c.id));
   }
 }
+
+// Reviews that draw from a paper — derived from the reviews' annotation entries that cite
+// a note on this paper. Deduped by review id; sorted by title for stable display.
+export async function reviewsCitingPaper(
+  paperId: string,
+  deps: Deps,
+): Promise<{ id: string; title: string | null; status: string }[]> {
+  const { db, schema } = deps;
+  const rows = await db
+    .selectDistinct({ id: schema.reviews.id, title: schema.reviews.title, status: schema.reviews.status })
+    .from(schema.reviewEntries)
+    .innerJoin(schema.annotations, eq(schema.reviewEntries.annotationId, schema.annotations.id))
+    .innerJoin(schema.reviews, eq(schema.reviewEntries.reviewId, schema.reviews.id))
+    .where(eq(schema.annotations.paperId, paperId));
+  return [...rows].sort((a: { title: string | null }, b: { title: string | null }) =>
+    (a.title ?? '').localeCompare(b.title ?? ''),
+  );
+}
