@@ -44,6 +44,7 @@ interface Props {
   tagsByAnnotation: Record<string, string[]>;
   backHref: string;
   backLabel: string;
+  citingReviews?: { id: string; title: string | null; href: string }[];
 }
 
 // ─── Offset helpers ───────────────────────────────────────────────────────────
@@ -175,6 +176,7 @@ export function AnnotationReader({
   tagsByAnnotation: initialTagsByAnnotation,
   backHref,
   backLabel,
+  citingReviews = [],
 }: Props) {
   const segments = useMemo(() => splitIntoSegments(fullText), [fullText]);
 
@@ -593,6 +595,17 @@ export function AnnotationReader({
 
           {paper.doi && (
             <div className="reader-doi mono">DOI {paper.doi}</div>
+          )}
+
+          {citingReviews.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline', marginTop: 10 }}>
+              <span className="meta">Reviews citing this paper:</span>
+              {citingReviews.map((r) => (
+                <Link key={r.id} href={r.href} style={{ fontSize: 13, color: 'var(--accent)' }}>
+                  {r.title || 'Untitled review'}
+                </Link>
+              ))}
+            </div>
           )}
 
           {/* Body */}

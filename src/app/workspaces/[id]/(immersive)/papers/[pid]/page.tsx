@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db/client';
 import { AnnotationReader } from '@/components/AnnotationReader';
 import { colorForId } from '@/lib/ui/display';
+import { reviewsCitingPaper } from '@/lib/reviews/service';
 
 export default async function PaperPage({
   params,
@@ -17,6 +18,13 @@ export default async function PaperPage({
     .from(schema.papers)
     .where(and(eq(schema.papers.id, pid), eq(schema.papers.workspaceId, workspaceId)));
   if (!paper) notFound();
+
+  const citing = await reviewsCitingPaper(pid, { db, schema });
+  const citingReviews = citing.map((r) => ({
+    id: r.id,
+    title: r.title,
+    href: `/workspaces/${workspaceId}/reviews/${r.id}/edit`,
+  }));
 
   // Fetch annotations for the paper
   const rawAnnotations = await db
@@ -87,6 +95,7 @@ export default async function PaperPage({
     <AnnotationReader
       paperId={paper.id}
       collectionId={paper.collectionId}
+      citingReviews={citingReviews}
       fullText={paper.fullText ?? ''}
       paper={{
         title: paper.title ?? 'Untitled',
