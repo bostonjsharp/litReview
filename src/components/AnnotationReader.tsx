@@ -494,12 +494,31 @@ export function AnnotationReader({
     return () => clearTimeout(t);
   }, [segments]);
 
+  // Dismiss the "Highlight & note" selection popover whenever the text selection is
+  // cleared/collapsed (e.g. clicking elsewhere) — otherwise it lingers after the
+  // highlighted section is gone.
+  useEffect(() => {
+    function onSelChange() {
+      const s = window.getSelection();
+      if (!s || s.isCollapsed) setSel(null);
+    }
+    document.addEventListener('selectionchange', onSelChange);
+    return () => document.removeEventListener('selectionchange', onSelChange);
+  }, []);
+
   // ─── Render helpers ────────────────────────────────────────────────────────
 
   const themeMap = Object.fromEntries(themes.map((t) => [t.id, t]));
 
   const hlAnns = useMemo<HlAnnotation[]>(
     () => annotations.map((a) => ({ id: a.id, charStart: a.charStart, charEnd: a.charEnd })),
+    [annotations],
+  );
+
+  // Author per annotation id — stamps who highlighted a passage (shown on hover over the
+  // in-text mark; the note card carries the full avatar + name).
+  const authorByAnnId = useMemo<Record<string, string>>(
+    () => Object.fromEntries(annotations.map((a) => [a.id, a.authorName])),
     [annotations],
   );
 
@@ -530,12 +549,14 @@ export function AnnotationReader({
       const isActive = activeId === part.annId;
       const dim = isDimmed(part.annId, focusThemeId, tagsByAnnotation);
       const anchored = anchoredPositions.has(`${si}:${pi}`);
+      const author = authorByAnnId[part.annId];
       return (
         <mark
           key={pi}
           id={anchored ? `hl-${part.annId}` : undefined}
           className={'hl' + (isActive ? ' active' : '') + (dim ? ' hl-dim' : '')}
           tabIndex={0}
+          title={author ? `Highlighted by ${author}` : undefined}
           onClick={(e) => {
             e.stopPropagation();
             activateMark(part.annId!);
@@ -547,7 +568,7 @@ export function AnnotationReader({
               activateMark(part.annId!);
             }
           }}
-          aria-label="Highlighted annotation"
+          aria-label={author ? `Highlighted annotation by ${author}` : 'Highlighted annotation'}
         >
           {part.text}
         </mark>

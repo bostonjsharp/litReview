@@ -61,9 +61,13 @@ cross-paper synthesis surface.
   instant under normal latency (not just failure-safe).
 
 ### BUG-3 — Highlight & note icon doesn't disappear when the highlight is gone
-- **Status:** new
+- **Status:** DONE (Phase 0)
 - **Report:** When a highlighted section is removed, its icon/marker lingers.
-- **Notes:** Reader is `AnnotationReader.tsx`; highlights computed via `sliceSegment()`. Likely a stale-state / missing re-render after delete (local state not pruned, or marker keyed off old data).
+- **Root cause:** The "Highlight & note" **selection popover** (`sel` state). `onMouseUp`
+  returned early when the selection collapsed (clicking away) without clearing `sel`, so the
+  popover lingered after the selection was gone.
+- **Fix:** a `document` `selectionchange` listener in `AnnotationReader.tsx` clears `sel`
+  whenever the selection empties/collapses — dismissing the popover wherever you click.
 
 ### BUG-4 — Settings gear inside the paper view does nothing
 - **Status:** DONE (Phase 2 — removed)
@@ -110,9 +114,12 @@ cross-paper synthesis surface.
 - **Resolution (Phase 3c):** passage location (`charStart`, `paperId`) now flows through `RetrievedChunk`→`Citation`; `?at=<charStart>` scrolls to and flashes the containing paragraph (`segmentOffsetForChar` in `offsets.ts`, `.para-flash` CSS); chat citations and search results build jump links via `passageHref` (`src/lib/ui/passage-link.ts`) — paper→`?at=`, note→`?ann=`, review→edit page.
 
 ### BUG-10 — No author "stamp" on annotations
-- **Status:** new / partially exists
+- **Status:** DONE (Phase 0)
 - **Report:** There should be a stamp showing who left an annotation.
-- **Notes:** Survey suggests the sidebar already shows author (with a color). Confirm whether the in-text highlight / icon shows author. If only the sidebar shows it, add an author chip/avatar on the inline marker. `annotations.createdBy` exists.
+- **Resolution:** The note cards already stamp the author (colored `Avatar` + name + page,
+  `note-foot`). Added the missing in-context piece: each in-text highlight now carries a
+  `title`/`aria-label` "Highlighted by &lt;author&gt;" (hover tooltip), so you can see who
+  highlighted a passage while reading without opening the rail.
 
 ### BUG-11 — Define what a "review" is (RESOLVED)
 - **Status:** resolved (decision made) → implementation tracked in FEAT-5 / FEAT-7
