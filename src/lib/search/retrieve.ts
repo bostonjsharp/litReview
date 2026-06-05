@@ -1,4 +1,4 @@
-import { sql, and, eq } from 'drizzle-orm';
+import { sql, and, or, eq, inArray } from 'drizzle-orm';
 import type { LLMProvider, RetrievedChunk, ParentType } from '../llm/types';
 
 export interface RetrieveScope {
@@ -27,7 +27,26 @@ export async function retrieve(
 
   const conds: unknown[] = [];
   if (opts.scope?.workspaceId) conds.push(eq(schema.chunks.workspaceId, opts.scope.workspaceId));
-  if (opts.scope?.collectionId) conds.push(eq(schema.chunks.collectionId, opts.scope.collectionId));
+  if (opts.scope?.collectionId) {
+    const cid = opts.scope.collectionId;
+    const paperRows = await db.select({ paperId: schema.paperCollections.paperId })
+      .from(schema.paperCollections).where(eq(schema.paperCollections.collectionId, cid));
+    const paperIds = paperRows.map((r: { paperId: string }) => r.paperId);
+    const reviewRows = await db.select({ id: schema.reviews.id })
+      .from(schema.reviews).where(eq(schema.reviews.collectionId, cid));
+    const reviewIds = reviewRows.map((r: { id: string }) => r.id);
+    const annRows = paperIds.length
+      ? await db.select({ id: schema.annotations.id })
+          .from(schema.annotations).where(inArray(schema.annotations.paperId, paperIds))
+      : [];
+    const annIds = annRows.map((r: { id: string }) => r.id);
+    const branches = [];
+    if (paperIds.length) branches.push(and(eq(schema.chunks.parentType, 'paper'), inArray(schema.chunks.parentId, paperIds)));
+    if (reviewIds.length) branches.push(and(eq(schema.chunks.parentType, 'review'), inArray(schema.chunks.parentId, reviewIds)));
+    if (annIds.length) branches.push(and(eq(schema.chunks.parentType, 'annotation'), inArray(schema.chunks.parentId, annIds)));
+    if (branches.length === 0) return []; // collection has nothing to search
+    conds.push(or(...branches));
+  }
   if (opts.scope?.parentType) conds.push(eq(schema.chunks.parentType, opts.scope.parentType));
   if (opts.scope?.parentId) conds.push(eq(schema.chunks.parentId, opts.scope.parentId));
   const where = conds.length ? and(...(conds as never[])) : undefined;
