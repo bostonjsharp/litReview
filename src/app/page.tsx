@@ -37,7 +37,7 @@ export default async function Home() {
       </header>
       <div className="home-wrap fade-enter">
         <div className="home-greet">
-          <div className="eyebrow">Signed in as {email}</div>
+          <div className="eyebrow">Signed in as <Link href="/account" style={{ color: 'var(--accent)' }}>{email}</Link></div>
           <h1>Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}.</h1>
           <p className="muted">Choose a workspace to continue.</p>
         </div>

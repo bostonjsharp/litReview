@@ -48,7 +48,7 @@ export function Topbar({ workspace, workspaces, userName }: {
       </div>
       <div className="row gap2">
         <ThemeToggle />
-        <Link className="topbar-me" href="/" title="Your account"><Avatar name={userName} size={32} /></Link>
+        <Link className="topbar-me" href="/account" title="Your account"><Avatar name={userName} size={32} /></Link>
       </div>
     </header>
   );
