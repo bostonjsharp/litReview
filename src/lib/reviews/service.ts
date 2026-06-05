@@ -51,6 +51,13 @@ export async function moveEntry(reviewId: string, entryId: string, direction: 'u
   }
 }
 
+export async function updateProseEntry(entryId: string, prose: string, deps: Deps) {
+  await deps.db
+    .update(deps.schema.reviewEntries)
+    .set({ prose })
+    .where(eq(deps.schema.reviewEntries.id, entryId));
+}
+
 export async function removeEntry(reviewId: string, entryId: string, deps: Deps) {
   await deps.db.delete(deps.schema.reviewEntries).where(eq(deps.schema.reviewEntries.id, entryId));
   const remaining = await getReviewEntries(reviewId, deps);

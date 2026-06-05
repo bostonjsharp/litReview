@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { makeTestDb } from '../helpers/testdb';
-import { addProseEntry, addAnnotationEntry, moveEntry, removeEntry, getReviewEntries } from '@/lib/reviews/service';
+import { addProseEntry, addAnnotationEntry, moveEntry, removeEntry, getReviewEntries, updateProseEntry } from '@/lib/reviews/service';
 
 let ctx: Awaited<ReturnType<typeof makeTestDb>>;
 beforeAll(async () => { ctx = await makeTestDb(); });
@@ -29,5 +29,14 @@ describe('review composition', () => {
     await removeEntry(r.id, entries[0].id, deps());
     entries = await getReviewEntries(r.id, deps());
     expect(entries.map((e) => e.position)).toEqual([0, 1]);
+  });
+
+  it('updateProseEntry persists new prose text', async () => {
+    // seed a review (reuse this file's helper); add a prose entry, update it, read it back
+    const [r] = await ctx.db.insert(ctx.schema.reviews).values({ title: 'R', status: 'ready' }).returning();
+    const entry = await addProseEntry(r.id, 'first', { db: ctx.db, schema: ctx.schema });
+    await updateProseEntry(entry.id, 'edited text', { db: ctx.db, schema: ctx.schema });
+    const entries = await getReviewEntries(r.id, { db: ctx.db, schema: ctx.schema });
+    expect(entries.find((e) => e.id === entry.id)?.prose).toBe('edited text');
   });
 });
