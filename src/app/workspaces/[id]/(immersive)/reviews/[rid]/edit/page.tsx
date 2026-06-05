@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db/client';
 import { getReviewEntries } from '@/lib/reviews/service';
+import { collectionPaperIds } from '@/lib/papers/collections';
 import { ReviewComposer } from '@/components/ReviewComposer';
 
 export default async function EditReviewPage({
@@ -135,11 +136,15 @@ export default async function EditReviewPage({
   }[] = [];
 
   if (review.collectionId) {
-    // Get all papers in the collection
-    const collPapers = await db
-      .select({ id: schema.papers.id, authors: schema.papers.authors, year: schema.papers.year })
-      .from(schema.papers)
-      .where(eq(schema.papers.collectionId, review.collectionId));
+    // Get all papers in the collection (membership via paper_collections, so reused
+    // papers' annotations are eligible candidates too — not just the home collection).
+    const memberPaperIds = await collectionPaperIds(review.collectionId, { db, schema });
+    const collPapers = memberPaperIds.length
+      ? await db
+          .select({ id: schema.papers.id, authors: schema.papers.authors, year: schema.papers.year })
+          .from(schema.papers)
+          .where(inArray(schema.papers.id, memberPaperIds))
+      : [];
 
     const collPaperIds = collPapers.map((p) => p.id);
     const paperMeta: Record<string, { authors: string[] | null; year: number | null }> = {};

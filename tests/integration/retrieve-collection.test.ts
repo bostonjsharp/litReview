@@ -23,6 +23,6 @@ it('collection scope includes a paper reused into that collection', async () => 
   await addPaperToCollection(p.id, b.id, { db: ctx.db, schema: ctx.schema });
 
   const res = await retrieve('q', fakeLLM(vec), ctx.db, { scope: { collectionId: b.id }, k: 5, schema: ctx.schema });
-  expect(res.map((r) => r.id)).toContain(/* the chunk is returned under collection B */ res[0]?.id);
+  // The chunk's stored collectionId is A, but the paper was reused into B → it must surface under scope B.
   expect(res.some((r) => r.text === 'reused')).toBe(true);
 });

@@ -19,12 +19,13 @@ export function AddToCollection({
 
   async function add(collectionId: string) {
     setBusy(true);
-    await fetch(`/api/papers/${paperId}/collections`, {
+    const res = await fetch(`/api/papers/${paperId}/collections`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ collectionId }),
     });
     setBusy(false);
+    if (!res.ok) return; // leave the menu open so the user can retry
     setOpen(false);
     router.refresh();
   }
