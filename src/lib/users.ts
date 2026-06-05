@@ -5,6 +5,14 @@ interface Deps {
   schema: any;
 }
 
+export async function setDisplayName(userId: string, name: string, deps: Deps): Promise<void> {
+  const trimmed = name.trim();
+  await deps.db
+    .update(deps.schema.users)
+    .set({ name: trimmed.length > 0 ? trimmed : null })
+    .where(eq(deps.schema.users.id, userId));
+}
+
 // Returns the user row for an email, creating it on first sight. Pure DB logic with
 // no auth/next-auth import so it is unit-testable and safe to call concurrently.
 export async function ensureUser(email: string, name: string | null, deps: Deps) {
