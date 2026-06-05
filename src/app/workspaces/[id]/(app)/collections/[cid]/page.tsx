@@ -20,10 +20,12 @@ export default async function CollectionDetail({
     .where(and(eq(schema.collections.id, cid), eq(schema.collections.workspaceId, id)));
   if (!collection) notFound();
 
-  const papers = await db
-    .select()
+  const paperRows = await db
+    .select({ p: schema.papers })
     .from(schema.papers)
-    .where(eq(schema.papers.collectionId, cid));
+    .innerJoin(schema.paperCollections, eq(schema.paperCollections.paperId, schema.papers.id))
+    .where(eq(schema.paperCollections.collectionId, cid));
+  const papers = paperRows.map((r: { p: typeof schema.papers.$inferSelect }) => r.p);
 
   // Per-paper annotation counts for papers in this collection
   const annMap: Record<string, number> = {};

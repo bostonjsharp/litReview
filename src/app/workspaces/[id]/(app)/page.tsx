@@ -48,12 +48,12 @@ export default async function WorkspaceDashboard({
     collectionIds.length > 0
       ? db
           .select({
-            collectionId: schema.papers.collectionId,
+            collectionId: schema.paperCollections.collectionId,
             cnt: sql<number>`count(*)::int`,
           })
-          .from(schema.papers)
-          .where(inArray(schema.papers.collectionId, collectionIds))
-          .groupBy(schema.papers.collectionId)
+          .from(schema.paperCollections)
+          .where(inArray(schema.paperCollections.collectionId, collectionIds))
+          .groupBy(schema.paperCollections.collectionId)
       : Promise.resolve([]),
     collectionIds.length > 0
       ? db
