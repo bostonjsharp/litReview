@@ -172,8 +172,12 @@ cross-paper synthesis surface.
 - **Fixes done:** added `GET /api/reviews/[id]` status route; `UploadForm` now polls
   reviews like papers (removed the dead "refresh" message); reviews now require a
   collection (server guard in `/api/upload` + client guard) so they never orphan.
-- **Still open (Phase 4):** attach reviews to the papers they draw from; a durable/
-  server-fetched recent-imports list; a global reviews view (ties to the vision + FEAT-3).
+- **Attach-to-paper DONE (Phase 4c):** the reader now shows a "Reviews citing this paper"
+  section, derived automatically from each review's annotation entries
+  (`reviewsCitingPaper` in `src/lib/reviews/service.ts`). Linkage stays in sync with what
+  the review actually cites; no manual linking.
+- **Still open (minor, later):** a durable/server-fetched recent-imports list; a global
+  reviews view; a per-paper review *count* on list rows.
 
 ### FEAT-6 — Profile page
 - **Status:** new
