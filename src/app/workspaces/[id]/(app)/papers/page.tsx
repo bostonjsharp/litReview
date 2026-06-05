@@ -5,6 +5,7 @@ import { listWorkspacePapers } from '@/lib/papers/collections';
 import { PageHead } from '@/components/ui/PageHead';
 import { Icon } from '@/components/ui/Icon';
 import { AddToCollection } from '@/components/papers/AddToCollection';
+import { DeletePaperButton } from '@/components/papers/DeletePaperButton';
 
 export default async function PapersLibrary({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,20 +24,37 @@ export default async function PapersLibrary({ params }: { params: Promise<{ id: 
         {papers.length === 0 && <div className="paper-row"><span className="meta" style={{ padding: '8px 0' }}>No papers yet.</span></div>}
         {papers.map((p: { id: string; title: string | null; status: string; collectionIds: string[] }) => {
           const ready = p.status === 'ready';
-          return (
-            <div className="paper-row" key={p.id}>
+          const memberLabel =
+            p.collectionIds.length === 0
+              ? 'In no collection'
+              : p.collectionIds.map((cid) => nameById[cid]).filter(Boolean).join(', ');
+          const inner = (
+            <>
               <div className="placeholder paper-thumb" />
-              <div className="paper-main" style={{ flex: 1, minWidth: 0 }}>
-                <div className="paper-title">
-                  {ready ? <Link href={`/workspaces/${id}/papers/${p.id}`}>{p.title || 'Untitled'}</Link> : (p.title || 'Untitled')}
-                </div>
+              <div className="paper-main" style={{ minWidth: 0 }}>
+                <div className="paper-title">{p.title || 'Untitled'}</div>
                 <div className="paper-meta">
-                  <span className="meta">
-                    {p.collectionIds.length === 0 ? 'In no collection' : p.collectionIds.map((cid) => nameById[cid]).filter(Boolean).join(', ')}
-                  </span>
+                  <span className="meta">{ready ? memberLabel : `${p.status} · ${memberLabel}`}</span>
                 </div>
               </div>
+            </>
+          );
+          const mainStyle = { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 } as const;
+          return (
+            <div className="paper-row" key={p.id}>
+              {ready ? (
+                // Whole bubble (thumb + title + meta) is the click target into the reader.
+                <Link
+                  href={`/workspaces/${id}/papers/${p.id}`}
+                  style={{ ...mainStyle, color: 'inherit', textDecoration: 'none' }}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div style={mainStyle}>{inner}</div>
+              )}
               <AddToCollection paperId={p.id} collections={collections} memberOf={p.collectionIds} />
+              <DeletePaperButton paperId={p.id} title={p.title || 'Untitled'} />
             </div>
           );
         })}
