@@ -181,12 +181,15 @@ cross-paper synthesis surface.
 - **Notes:** No profile/settings route today. `users` table has `name`, `email`, `role`. Scope: view/edit display name, see workspaces, sign out.
 
 ### FEAT-7 — Publish / export a review
-- **Status:** new (unblocked by BUG-11 decision)
+- **Status:** DONE (Phase 4b)
 - **Idea:** Finish the "create new review" half of the vision: a publish/export step
   for composed reviews (PDF and/or markdown, plus a read/share view).
-- **Notes:** `reviews` already has a `status` and `bodyText`; entries live in
-  `reviewEntries`. Add an "export" action that renders the ordered blocks
-  (prose + annotation quotes with citations) to a downloadable/shareable artifact.
+- **Resolution:** First closed the composer's stubs — **prose edits and the title now
+  persist** (`updateProseEntry` + entries PATCH `{prose}`, debounced composer save; PATCH
+  `/api/reviews/[id]` for title). **Publish** sets `status: 'published'` (added to the
+  TS-only `statusValues`, no migration) with a Published badge. **Export** = client-side
+  markdown download (`reviewToMarkdown` in `src/lib/reviews/export.ts`) + a printable read
+  view (`@media print` → browser Save-as-PDF). No public links / server-side PDF (deferred).
 
 ---
 
