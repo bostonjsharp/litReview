@@ -6,6 +6,15 @@ interface Deps {
   schema: any;
 }
 
+// The workspace a review belongs to (for membership guards on review sub-resources).
+export async function reviewWorkspaceId(reviewId: string, deps: Deps): Promise<string | null> {
+  const [r] = await deps.db
+    .select({ workspaceId: deps.schema.reviews.workspaceId })
+    .from(deps.schema.reviews)
+    .where(eq(deps.schema.reviews.id, reviewId));
+  return r?.workspaceId ?? null;
+}
+
 async function nextPosition(reviewId: string, deps: Deps): Promise<number> {
   const rows = await deps.db
     .select({ position: deps.schema.reviewEntries.position })

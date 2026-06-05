@@ -154,8 +154,7 @@ export function ReviewComposer({
   // candidates list is stable (server-fetched); used annotations are excluded via railNotes
   const candidates = initialCandidates;
 
-  // Local-only title: there is no API to rename a review; title edits are kept in state only.
-  // SCOPE DECISION: title editing is local-only (deferred; no PATCH /reviews/:id endpoint).
+  // Title is edited locally and persisted on blur via PATCH /api/reviews/:id (saveTitle).
   const [localTitle, setLocalTitle] = useState(meta.title);
 
   const [busy, setBusy] = useState(false);
@@ -192,6 +191,15 @@ export function ReviewComposer({
     }
   }, [entries]);
 
+  // Clear pending debounced prose-save timers on unmount so they don't fire (fetch +
+  // setState) after the component is gone.
+  useEffect(() => {
+    const timers = proseTimers.current;
+    return () => {
+      for (const t of Object.values(timers)) clearTimeout(t);
+    };
+  }, []);
+
   // Derived: which annotation ids are currently used
   const usedAnnotationIds = new Set(
     entries.filter((e) => e.kind === 'annotation').map((e) => e.annotationId as string),
@@ -209,7 +217,7 @@ export function ReviewComposer({
       const res = await fetch(`/api/reviews/${reviewId}/entries`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        // SCOPE DECISION: prose block text starts empty; editing existing prose is local-only
+        // New prose blocks start blank; the text is then edited + persisted via PATCH-prose.
         body: JSON.stringify({ kind: 'prose', prose: ' ' }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

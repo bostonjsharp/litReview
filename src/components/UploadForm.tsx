@@ -9,7 +9,7 @@ interface Collection {
   name: string;
 }
 
-type ItemStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'metadata_only';
+type ItemStatus = 'pending' | 'processing' | 'ready' | 'failed' | 'metadata_only' | 'published';
 
 interface QueueItem {
   id: string;
@@ -20,7 +20,7 @@ interface QueueItem {
   errorReason?: string | null;
 }
 
-const TERMINAL: ItemStatus[] = ['ready', 'failed', 'metadata_only'];
+const TERMINAL: ItemStatus[] = ['ready', 'failed', 'metadata_only', 'published'];
 const POLL_INTERVAL = 2500;
 
 export function UploadForm({
