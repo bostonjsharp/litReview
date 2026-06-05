@@ -2,6 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { assembleMatrix, type Matrix, type TaggedAnnotation } from './matrix';
 import { buildSuggestionPrompt, parseSuggestion, type ThemeSuggestion } from './suggest';
 import type { LLMProvider } from '../llm/types';
+import { collectionPaperIds, isPaperInCollection } from '../papers/collections';
 
 interface Deps {
   db: any;
@@ -42,16 +43,12 @@ export async function tagAnnotation(annotationId: string, themeId: string, deps:
     .from(schema.annotations)
     .where(eq(schema.annotations.id, annotationId));
   if (!ann) throw new Error('annotation not found');
-  const [paper] = await db
-    .select({ collectionId: schema.papers.collectionId })
-    .from(schema.papers)
-    .where(eq(schema.papers.id, ann.paperId));
   const [theme] = await db
     .select({ collectionId: schema.themes.collectionId })
     .from(schema.themes)
     .where(eq(schema.themes.id, themeId));
   if (!theme) throw new Error('theme not found');
-  if (!paper?.collectionId || paper.collectionId !== theme.collectionId) {
+  if (!(await isPaperInCollection(ann.paperId, theme.collectionId, deps))) {
     throw new Error('theme and annotation are in different collections');
   }
   await db.insert(schema.annotationThemes).values({ annotationId, themeId }).onConflictDoNothing();
@@ -66,10 +63,13 @@ export async function untagAnnotation(annotationId: string, themeId: string, dep
 
 export async function getMatrix(collectionId: string, deps: Deps): Promise<Matrix> {
   const { db, schema } = deps;
-  const rawPapers = await db
-    .select({ id: schema.papers.id, title: schema.papers.title, authors: schema.papers.authors, year: schema.papers.year })
-    .from(schema.papers)
-    .where(eq(schema.papers.collectionId, collectionId));
+  const paperIds = await collectionPaperIds(collectionId, { db, schema });
+  const rawPapers = paperIds.length
+    ? await db
+        .select({ id: schema.papers.id, title: schema.papers.title, authors: schema.papers.authors, year: schema.papers.year })
+        .from(schema.papers)
+        .where(inArray(schema.papers.id, paperIds))
+    : [];
   const papers = rawPapers.map((p: { id: string; title: string | null; authors: string[] | null; year: number | null }) => ({
     id: p.id,
     title: p.title,
@@ -103,11 +103,12 @@ export async function getMatrix(collectionId: string, deps: Deps): Promise<Matri
 
 export async function listCollectionAnnotations(collectionId: string, deps: Deps) {
   const { db, schema } = deps;
+  const paperIds = await collectionPaperIds(collectionId, deps);
+  if (paperIds.length === 0) return [];
   return db
     .select({ annotationId: schema.annotations.id, quote: schema.annotations.quote, comment: schema.annotations.comment })
     .from(schema.annotations)
-    .innerJoin(schema.papers, eq(schema.annotations.paperId, schema.papers.id))
-    .where(eq(schema.papers.collectionId, collectionId));
+    .where(inArray(schema.annotations.paperId, paperIds));
 }
 
 export async function suggestThemes(collectionId: string, deps: SuggestDeps): Promise<ThemeSuggestion> {
