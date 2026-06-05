@@ -272,3 +272,9 @@ td:hover .cell-empty-add { border-color: var(--border-strong); color: var(--mute
   25% { background: var(--accent-soft); }
 }
 .para-flash { animation: para-flash 1.2s ease-out; border-radius: 4px; }
+
+/* Print a review's read view cleanly (browser → Save as PDF). Switch to Read view first. */
+@media print {
+  .sidebar, .topbar, .composer-rail, .reader-topbar, .block-handle, .block-add, .composer-title-in { display: none !important; }
+  .composer, .composer-main, .composer-doc { display: block; max-width: none; margin: 0; padding: 0; }
+}
