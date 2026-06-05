@@ -50,6 +50,10 @@ export async function POST(req: Request) {
   else values.createdBy = user.id;
   const [row] = await db.insert(table).values(values).returning();
 
+  if (kind === 'paper' && collectionId) {
+    await db.insert(schema.paperCollections).values({ paperId: row.id, collectionId }).onConflictDoNothing();
+  }
+
   after(
     processDocument(
       { parentType: kind, parentId: row.id, bytes, pastedText: pastedText ?? undefined },

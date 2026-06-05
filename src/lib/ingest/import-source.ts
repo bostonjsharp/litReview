@@ -67,6 +67,9 @@ export async function createImportedPaper(
     : { ...base, ...metadataOnlyFields(metadata) };
 
   const [row] = await db.insert(schema.papers).values(values).returning();
+  if (input.collectionId) {
+    await db.insert(schema.paperCollections).values({ paperId: row.id, collectionId: input.collectionId }).onConflictDoNothing();
+  }
   return { id: row.id, status: pdfUrl ? 'pending' : 'metadata_only' };
 }
 
