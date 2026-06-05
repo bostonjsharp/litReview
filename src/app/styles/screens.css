@@ -79,7 +79,7 @@ mark.hl:hover, mark.hl.active { background: var(--highlight-strong); }
 .note-compose textarea { background: var(--surface); }
 
 /* theme picker popover */
-.theme-pop { position: absolute; z-index: 30; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 6px; width: 220px; }
+.theme-pop { position: absolute; z-index: 50; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 6px; width: 220px; }
 .theme-pop button { width: 100%; display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--r-sm); font-size: 13.5px; text-align: left; }
 .theme-pop button:hover { background: var(--surface-3); }
 .theme-pop .tp-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--accent); }

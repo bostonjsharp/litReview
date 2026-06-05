@@ -41,7 +41,8 @@ export default async function PapersLibrary({ params }: { params: Promise<{ id: 
           );
           const mainStyle = { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 } as const;
           return (
-            <div className="paper-row" key={p.id}>
+            // `click` adds the hover highlight + pointer affordance for the clickable bubble.
+            <div className={'paper-row' + (ready ? ' click' : '')} key={p.id}>
               {ready ? (
                 // Whole bubble (thumb + title + meta) is the click target into the reader.
                 <Link
