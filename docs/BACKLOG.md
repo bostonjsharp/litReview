@@ -193,9 +193,12 @@ cross-paper synthesis surface.
   reviews view; a per-paper review *count* on list rows.
 
 ### FEAT-6 — Profile page
-- **Status:** new
+- **Status:** DONE (Phase 5)
 - **Idea:** A user profile page.
-- **Notes:** No profile/settings route today. `users` table has `name`, `email`, `role`. Scope: view/edit display name, see workspaces, sign out.
+- **Resolution:** Top-level `/account` page (`src/app/account/page.tsx`): editable **display
+  name** (`setDisplayName` in `src/lib/users.ts` + `updateDisplayNameAction` server action),
+  read-only email + role, your workspaces (links), and sign out. The topbar avatar and the
+  home "Signed in as…" now link to it.
 
 ### FEAT-7 — Publish / export a review
 - **Status:** DONE (Phase 4b)
