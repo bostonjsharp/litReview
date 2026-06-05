@@ -4,6 +4,7 @@ const MAP: Record<string, [string, string]> = {
   pending: ["badge-pending", "Pending"],
   failed: ["badge-failed", "Failed"],
   metadata_only: ["badge-pending", "Metadata only"],
+  published: ["badge-ready", "Published"],
 };
 export function StatusBadge({ status }: { status: string }) {
   const [cls, label] = MAP[status] || MAP.pending;
